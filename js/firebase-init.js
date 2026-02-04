@@ -3,9 +3,9 @@
 
 const firebaseConfig = {
     apiKey: "AIzaSyAE1Bik1VmsJWJ3gpVa-QWVIXKinqcqpkg",
-    authDomain: "winners-fit-camp.firebaseapp.com",
-    projectId: "winners-fit-camp",
-    storageBucket: "winners-fit-camp.firebasestorage.app",
+    authDomain: "winners-fit-camp-davao.firebaseapp.com",
+    projectId: "winners-fit-camp-davao",
+    storageBucket: "winners-fit-camp-davao.firebasestorage.app",
     messagingSenderId: "543113978701",
     appId: "1:543113978701:web:dc6768b91344957ff6cd04",
     measurementId: "G-5E875TD6VH"

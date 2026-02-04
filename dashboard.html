@@ -13,6 +13,8 @@
         /* Dashboard Specific Layout */
         body {
             display: flex;
+            flex-direction: row;
+            /* Override style.css column output */
             overflow: hidden;
             /* Prevent body scroll, handle in main */
         }
@@ -218,7 +220,8 @@
 
         <ul class="nav-links">
             <li class="nav-item">
-                <a href="dashboard.html" class="nav-link active">
+                <a href="#" class="nav-link active" data-page="dashboard"
+                    onclick="loadPage('dashboard'); return false;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
@@ -229,7 +232,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="members.html" class="nav-link">
+                <a href="members.html" class="nav-link" data-page="members">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -240,7 +243,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="checkin.html" class="nav-link">
+                <a href="checkin.html" class="nav-link" data-page="checkin">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -252,7 +255,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="reports.html" class="nav-link">
+                <a href="#" class="nav-link" data-page="reports" onclick="loadPage('reports'); return false;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="20" x2="12" y2="10"></line>
                         <line x1="18" y1="20" x2="18" y2="4"></line>
@@ -262,7 +265,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="hr.html" class="nav-link">
+                <a href="hr.html" class="nav-link" data-page="hr">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -478,6 +481,37 @@
         </div>
 
         </div>
+        </div>
+
+        <!-- View: Reports -->
+        <div id="view-reports" style="display:none;">
+            <div class="section-header">
+                <h2>Financial & Member Reports</h2>
+                <div class="date-display">Real-time Data</div>
+            </div>
+            <h2>Reports</h2>
+        </div>
+    </main> <!-- Kiosk Mode Overlay -->
+    <div id="kiosk-overlay" class="modal-overlay" style="display:none; background: #000; z-index: 9999;">
+        <div style="text-align:center; padding: 2rem;">
+            <h1 style="color:var(--gold); margin-bottom: 0.5rem;">Attendance Kiosk</h1>
+            <p style="color:var(--text-muted); margin-bottom: 2rem;">Scan to Clock In/Out</p>
+
+            <div id="kiosk-qr-container"
+                style="background:#fff; padding:20px; border-radius:15px; display:inline-block; margin-bottom:2rem;">
+                <!-- QR Code will be injected here -->
+            </div>
+
+            <div id="kiosk-timer" style="color:var(--gold); font-weight:bold; font-size:1.2rem; margin-bottom: 2rem;">
+                Code rotates in: 20s
+            </div>
+
+            <button class="cta-button" onclick="HRController.closeKiosk()"
+                style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);">
+                Exit Kiosk Mode
+            </button>
+        </div>
+    </div>
     </main>
 
     <!-- Firebase SDKs (Compat) -->
@@ -486,8 +520,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="js/firebase-init.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/store.js"></script>
     <script src="js/members.js"></script>
+    <script src="js/hr.js"></script>
     <!-- Auth MUST be last to handle redirects after other scripts load, though typically order matters for dependencies -->
     <script src="js/auth.js"></script>
     <script>
@@ -500,9 +536,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             const user = AuthService.getCurrentUser();
             if (user) {
-                document.getElementById('userName').textContent = user.username;
-                document.getElementById('userRole').textContent = user.role;
-                document.getElementById('userAvatar').textContent = user.username[0].toUpperCase();
+                document.getElementById('userName').textContent = user.username || user.email || 'Admin';
+                document.getElementById('userRole').textContent = user.role || 'Member';
+                document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
 
                 // Apply RBAC
                 if (user.role !== 'admin') {
@@ -510,49 +546,43 @@
                 }
             }
 
-            // Simple Router
+            // Simple Router (Internal Views only)
             const navLinks = document.querySelectorAll('.nav-link');
-            const views = ['dashboard', 'members', 'checkin', 'reports', 'hr'];
+            const internalViews = ['dashboard', 'reports'];
 
             window.loadPage = (pageName) => {
-                console.log('Loading page:', pageName); // Debug
+                console.log('Loading view:', pageName);
 
-                // Update specific visibility
-                views.forEach(view => {
+                internalViews.forEach(view => {
                     const el = document.getElementById(`view-${view}`);
                     if (el) {
                         el.style.display = (view === pageName) ? 'block' : 'none';
-                        // Force opacity for animation if needed
                         if (view === pageName) {
                             el.style.opacity = 1;
-                            el.classList.add('fade-in'); // Assuming safe to add
+                            el.classList.add('fade-in');
                         }
-                    } else {
-                        console.warn(`View not found: view-${view}`);
                     }
                 });
 
                 // Update Title
                 document.getElementById('pageTitle').textContent = pageName.charAt(0).toUpperCase() + pageName.slice(1);
 
-                // Update Nav
+                // Update Nav Active State
                 navLinks.forEach(link => {
                     link.classList.remove('active');
                     if (link.getAttribute('data-page') === pageName) link.classList.add('active');
                 });
-
-                // Auto-refresh data based on view
-                if (pageName === 'members' && window.MemberController) {
-                    MemberController.renderTable();
-                }
             }
 
-            // Handle Clicks
+            // Handle Clicks for SPA views
             navLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
-                    e.preventDefault();
                     const page = link.getAttribute('data-page');
-                    loadPage(page);
+                    // Only prevent default if it's an internal view (marked with '#')
+                    if (internalViews.includes(page) && link.getAttribute('href') === '#') {
+                        e.preventDefault();
+                        loadPage(page);
+                    }
                 });
             });
 

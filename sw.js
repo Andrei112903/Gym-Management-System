@@ -1,11 +1,13 @@
-const CACHE_NAME = 'winners-fit-camp-v1';
+const CACHE_NAME = 'winners-fit-camp-v17';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './style.css',
     './app.js',
     './icon.png',
-    './manifest.json'
+    './manifest.json',
+    './attendance.html',
+    './js/attendance.js'
 ];
 
 // Install Event

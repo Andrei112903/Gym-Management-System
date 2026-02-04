@@ -2,13 +2,13 @@
 // These rely on the CDN scripts being loaded in HTML
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAE1Bik1VmsJWJ3gpVa-QWVIXKinqcqpkg",
-    authDomain: "winners-fit-camp-davao.firebaseapp.com",
-    projectId: "winners-fit-camp-davao",
-    storageBucket: "winners-fit-camp-davao.firebasestorage.app",
-    messagingSenderId: "543113978701",
-    appId: "1:543113978701:web:dc6768b91344957ff6cd04",
-    measurementId: "G-5E875TD6VH"
+    apiKey: "AIzaSyCGGO9XDoniTMwN7tmqifzTxG8mTWQmizQ",
+    authDomain: "gym-management-system-93da3.firebaseapp.com",
+    projectId: "gym-management-system-93da3",
+    storageBucket: "gym-management-system-93da3.firebasestorage.app",
+    messagingSenderId: "732088002656",
+    appId: "1:732088002656:web:82ea2d2450c168388cfb05",
+    measurementId: "G-P150FRWBZM"
 };
 
 // Initialize Firebase

@@ -188,7 +188,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="reports.html" class="nav-link"
+                <a href="dashboard.html" class="nav-link"
                     style="display:flex; align-items:center; gap:12px; padding:12px 15px; color:var(--text-muted); text-decoration:none;">
                     <svg style="width:20px; height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -199,6 +199,19 @@
                     Reports
                 </a>
             </li>
+            <li class="nav-item admin-only">
+                <a href="dashboard.html" class="nav-link"
+                    style="display:flex; align-items:center; gap:12px; padding:12px 15px; color:var(--text-muted); text-decoration:none;">
+                    <svg style="width:20px; height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    HR & Staff
+                </a>
+            </li>
         </ul>
 
         <div class="user-profile"
@@ -207,7 +220,7 @@
                 style="width:35px; height:35px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">
                 U</div>
             <div class="user-info">
-                <h4 id="userName" style="font-size:0.9rem; margin:0;">User</h4>
+                <h4 id="userName" style="font-size:0.9rem; margin:0;">Admin</h4>
             </div>
             <button onclick="AuthService.logout()"
                 style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer;">
@@ -264,8 +277,8 @@
             AuthService.requireLogin();
             const user = AuthService.getCurrentUser();
             if (user) {
-                document.getElementById('userName').textContent = user.username || 'Staff';
-                document.getElementById('userAvatar').textContent = (user.username || 'U')[0].toUpperCase();
+                document.getElementById('userName').textContent = user.username || user.email || 'Admin';
+                document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
                 if (user.role !== 'admin') {
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
                 }

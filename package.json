@@ -3,9 +3,12 @@
     "version": "1.0.0",
     "description": "Premium Fitness PWA",
     "scripts": {
-        "dev": "live-server --port=8080 --entry-file=login.html"
+        "dev": "serve -p 8080"
+    },
+    "dependencies": {
+        "firebase": "^12.8.0"
     },
     "devDependencies": {
-        "live-server": "^1.2.0"
+        "serve": "^14.2.5"
     }
 }

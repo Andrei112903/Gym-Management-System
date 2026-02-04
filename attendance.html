@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Attendance - Winners Fit</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Mobile-Optimized Attendance Styles */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .pin-display {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 2rem 0;
+        }
+
+        .pin-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .pin-dot.filled {
+            background: var(--gold);
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 1rem;
+        }
+
+        .num-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: white;
+            font-size: 1.5rem;
+            padding: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
+        }
+
+        .num-btn:active {
+            background: var(--gold);
+            color: black;
+            transform: scale(0.95);
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            min-height: 24px;
+            font-size: 0.9rem;
+        }
+
+        .error-screen {
+            color: #ff3333;
+            text-align: center;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-10px);
+            }
+
+            75% {
+                transform: translateX(10px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+    </style>
+
+    <script>
+        // FORCED CACHE KILLER
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.unregister());
+            });
+        }
+
+        // Show errors directly on the phone screen
+        window.onerror = function (msg, url, line) {
+            alert("System Error: " + msg + " at " + line);
+        };
+    </script>
+</head>
+
+<body>
+
+    <div id="loading" class="auth-container">
+        <img src="icon.png" alt="Logo"
+            style="width:60px; height:60px; border-radius:50%; margin-bottom:1rem; opacity:0.5;">
+        <h3 id="loading-text">Verifying QR Code...</h3>
+        <p id="debug-status" style="font-size:0.7rem; color:var(--text-muted); margin-top:10px;">Initializing...</p>
+    </div>
+
+    <div id="error-view" class="auth-container" style="display:none;">
+        <div class="glass-card error-screen">
+            <h2 id="error-title">Access Denied</h2>
+            <p id="error-msg" style="color:var(--text-muted); margin-top:10px;">Invalid Token</p>
+            <button class="cta-button" onclick="window.location.reload()"
+                style="margin-top:20px; width:100%;">Retry</button>
+        </div>
+    </div>
+
+    <!-- View: Profile Setup -->
+    <div id="setup-view" class="auth-container" style="display:none;">
+        <h1 style="color:var(--gold); margin-bottom: 0.5rem;">Welcome aboard!</h1>
+        <p style="color:var(--text-muted); margin-bottom: 2rem;">Please finalize your staff profile</p>
+
+        <div class="glass-card" style="text-align: left;">
+            <div class="input-group" style="margin-bottom:1.5rem;">
+                <label>Choose Username</label>
+                <input type="text" id="setup-username" placeholder="e.g. john.doe"
+                    style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); padding:12px; border-radius:12px; color:white;">
+            </div>
+
+            <div class="input-group" style="margin-bottom:1.5rem;">
+                <label>Set 4-Digit PIN</label>
+                <input type="password" id="setup-pin" maxlength="4" placeholder="****" pattern="[0-9]*"
+                    inputmode="numeric"
+                    style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); padding:12px; border-radius:12px; color:white; font-size:1.5rem; letter-spacing:10px; text-align:center;">
+            </div>
+
+            <button class="cta-button" onclick="AttendanceClient.saveProfile()" style="width:100%;">Save &
+                Finish</button>
+        </div>
+    </div>
+
+    <!-- View: PIN Pad -->
+    <div id="pin-view" class="auth-container" style="display:none;">
+        <img src="icon.png" alt="Logo" style="width:60px; height:60px; border-radius:50%; margin-bottom:1rem;">
+        <h2 style="margin-bottom:0.5rem;">Staff Check-In</h2>
+        <p style="color:var(--text-muted);">Enter your 4-digit PIN</p>
+
+        <div class="pin-display">
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+        </div>
+
+        <div class="status-message" id="status-msg"></div>
+
+        <div class="numpad">
+            <button class="num-btn" onclick="AttendanceClient.press(1)">1</button>
+            <button class="num-btn" onclick="AttendanceClient.press(2)">2</button>
+            <button class="num-btn" onclick="AttendanceClient.press(3)">3</button>
+            <button class="num-btn" onclick="AttendanceClient.press(4)">4</button>
+            <button class="num-btn" onclick="AttendanceClient.press(5)">5</button>
+            <button class="num-btn" onclick="AttendanceClient.press(6)">6</button>
+            <button class="num-btn" onclick="AttendanceClient.press(7)">7</button>
+            <button class="num-btn" onclick="AttendanceClient.press(8)">8</button>
+            <button class="num-btn" onclick="AttendanceClient.press(9)">9</button>
+            <button class="num-btn" style="visibility:hidden;"></button>
+            <button class="num-btn" onclick="AttendanceClient.press(0)">0</button>
+            <button class="num-btn" onclick="AttendanceClient.clear()"
+                style="font-size:1rem; color:#ff3333; border-color:rgba(255,0,0,0.3);">DEL</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/attendance.js?v=5"></script>
+
+    <div id="setup-debug" style="display:none; color:lime; font-size:0.6rem; padding:10px;"></div>
+</body>
+
+</html>

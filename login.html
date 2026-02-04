@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Winners Fit Camp</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Specific Styles for Login Page centering */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            perspective: 1000px;
+            padding: 20px;
+        }
+
+        .glass-card.login-box {
+            padding: 2.5rem 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(229, 9, 20, 0.5);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .login-title {
+            color: var(--gold);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            margin-left: 5px;
+        }
+
+        .styled-input,
+        .styled-select {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .styled-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E50914%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right .7em top 50%;
+            background-size: .65em auto;
+        }
+
+        /* Fix for Dropdown Options */
+        option {
+            background-color: var(--black);
+            color: var(--text-main);
+        }
+
+        .styled-input:focus,
+        .styled-select:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: rgba(229, 9, 20, 0.05);
+            box-shadow: 0 0 10px rgba(229, 9, 20, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .error-msg {
+            color: #ff4d4d;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* Footer text */
+        .footer-text {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        <div class="glass-card login-box">
+            <img src="icon.png" alt="Logo" class="login-logo">
+            <h1 class="login-title">Winners<br><span style="font-size: 0.5em; color: white;">Fit Camp</span></h1>
+            <p class="login-subtitle">Management Portal</p>
+
+            <form id="loginForm">
+                <div class="input-group">
+                    <label>Login As</label>
+                    <select id="roleSelect" class="styled-select" required>
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="admin">Administrator</option>
+                        <option value="staff">Staff Member</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="username" class="styled-input" placeholder="Enter username" required
+                        autocomplete="username">
+                </div>
+
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" class="styled-input" placeholder="Enter password" required
+                        autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="cta-button login-btn">Sign In</button>
+
+                <div id="errorMsg" class="error-msg"></div>
+            </form>
+
+            <p class="footer-text">&copy; 2026 Winners Fit Camp</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Init Firebase -->
+    <script src="js/firebase-init.js"></script>
+
+    <!-- Load Auth Logic -->
+    <script src="js/auth.js"></script>
+    <script>
+        // FORCE UNREGISTER SERVICE WORKER to fix "Offline" issues
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                for (let registration of registrations) {
+                    console.log('Unregistering SW:', registration);
+                    registration.unregister();
+                }
+            });
+        }
+
+        // Init logic for login page specifically
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('loginForm');
+            const roleSelect = document.getElementById('roleSelect');
+            const usernameInput = document.getElementById('username');
+            const errorMsg = document.getElementById('errorMsg');
+
+            // Auto-fill convenience for demo (Optional, helpful for user testing)
+            roleSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'admin') {
+                    usernameInput.value = 'admin';
+                } else if (e.target.value === 'staff') {
+                    usernameInput.value = 'staff';
+                }
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const role = roleSelect.value;
+                const user = usernameInput.value;
+                const pass = document.getElementById('password').value;
+                const btn = form.querySelector('button');
+                const originalBtnText = btn.innerHTML;
+
+                // UI Loading State
+                btn.innerHTML = 'Authenticating...';
+                btn.disabled = true;
+                errorMsg.style.opacity = '0';
+
+                try {
+                    // Authenticate
+                    // Note: window.AuthService.login returns true on success, or returns false (or throws)
+                    const success = await window.AuthService.login(user, pass, role);
+
+                    if (success) {
+                        btn.innerHTML = 'Access Granted';
+                        btn.style.background = 'var(--gold)';
+                        btn.style.color = 'black';
+                        // Redirect happens in auth.js usually, but we can double ensure
+                    } else {
+                        // If it returned false without throwing
+                        throw new Error("Login returned false");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    // Reset UI on Failure
+                    form.classList.add('shake');
+                    errorMsg.textContent = 'Login Failed: ' + (err.message || "Invalid credentials");
+                    errorMsg.style.opacity = '1';
+
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                    setTimeout(() => form.classList.remove('shake'), 500);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,11 @@
+{
+    "name": "winners-fit-camp",
+    "version": "1.0.0",
+    "description": "Premium Fitness PWA",
+    "scripts": {
+        "dev": "live-server --port=8080 --entry-file=login.html"
+    },
+    "devDependencies": {
+        "live-server": "^1.2.0"
+    }
+}

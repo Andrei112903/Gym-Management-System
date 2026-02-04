@@ -1,0 +1,35 @@
+{
+    "name": "Winners Fit Camp",
+    "short_name": "Winners Fit",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#FFD700",
+    "description": "Premium Fitness Companion App",
+    "icons": [
+      {
+        "src": "./icon.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "./icon.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ],
+    "screenshots": [
+        {
+           "src": "./icon.png",
+           "sizes": "512x512",
+           "type": "image/png",
+           "form_factor": "wide"
+        },
+        {
+            "src": "./icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow"
+         }
+    ]
+}

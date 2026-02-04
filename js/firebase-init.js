@@ -18,6 +18,17 @@ const auth = firebase.auth();
 window.db = db;
 window.auth = auth;
 
+// ENABLE OFFLINE PERSISTENCE
+// This is the "Hard Fix" for slow/flaky connections.
+db.enablePersistence()
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn("Persistence failed: Multiple tabs open");
+        } else if (err.code == 'unimplemented') {
+            console.warn("Persistence not supported by browser");
+        }
+    });
+
 // FIX: Remove Force Long Polling to see if it unblocks connection
 // db.settings({ experimentalForceLongPolling: true, merge: true });
 

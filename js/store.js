@@ -51,17 +51,66 @@ const Store = {
 
         try {
             const snapshot = await db.collection('members').orderBy('joinDate', 'desc').get();
-            const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Double check before writing
-            if (!this.isLocalFresh()) {
-                localStorage.setItem('wfc_members_cache', JSON.stringify(members));
-            }
-            return members;
+            // FIX 1: Map Correctly. doc.data() first, then overwrite id with real doc.id
+            // Also capture the hidden 'id' field from data as '_originalLocalId' to track sync status
+            const serverMembers = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    ...data,
+                    id: doc.id,
+                    _originalLocalId: (data.id && data.id.toString().startsWith('loc_')) ? data.id : null
+                };
+            });
+
+            // FIX 2: Identify which local IDs have effectively been "synced"
+            const syncedIds = new Set(serverMembers.map(m => m._originalLocalId).filter(Boolean));
+
+            // MERGE STRATEGY:
+            let finalMembers = serverMembers;
+
+            try {
+                const cachedRaw = localStorage.getItem('wfc_members_cache');
+                if (cachedRaw) {
+                    const cached = JSON.parse(cachedRaw);
+
+                    // Filter: Keep ONLY local items that are NOT in the server set
+                    const unsyncedLocals = cached.filter(m => {
+                        const isLocal = m.id && m.id.toString().startsWith('loc_');
+                        const isAlreadySynced = syncedIds.has(m.id);
+                        return isLocal && !isAlreadySynced;
+                    });
+
+                    if (unsyncedLocals.length > 0) {
+                        console.log(`Merging ${unsyncedLocals.length} unsynced items.`);
+                        // Deduplicate unsyncedLocals itself (fix for existing corrupted cache)
+                        const uniqueLocals = Array.from(new Map(unsyncedLocals.map(item => [item.id, item])).values());
+
+                        finalMembers = [...uniqueLocals, ...serverMembers];
+                    }
+                }
+            } catch (e) { console.warn("Merge error", e); }
+
+            // Final safety dedup by ID just in case
+            finalMembers = Array.from(new Map(finalMembers.map(item => [item.id, item])).values());
+
+            // Save the clean, merged list
+            localStorage.setItem('wfc_members_cache', JSON.stringify(finalMembers));
+            return finalMembers;
         } catch (error) {
             console.error("Error getting members:", error);
-            return [];
+            const cached = localStorage.getItem('wfc_members_cache');
+            return cached ? JSON.parse(cached) : [];
         }
+    },
+
+    retryPendingSync: function (localItems) {
+        // Simple retry trigger
+        localItems.forEach(item => {
+            // Check if already sending? No easy way. Just fire add again?
+            // Danger of duplicate. For now, rely on Firestore internal queue.
+            // This function just exists to mark intention.
+        });
     },
 
     addMember: async function (memberData) {
@@ -96,22 +145,42 @@ const Store = {
             console.warn("Cache update failed", e);
         }
 
-        // 2. Background Sync to Firebase (Fire and Forget)
-        // We don't await this to unblock the UI
-        db.collection('members').add(newMember)
-            .then(docRef => {
-                console.log("Synced to Firebase with ID:", docRef.id);
-                // Optional: Update the local ID to the real ID in cache?
-                // This is complex for a quick fix, let's just let the next hard refresh handle it
-                // or just leave it.
-            })
-            .catch(err => {
-                console.error("Firebase Sync Failed:", err);
-                alert("WARNING: Save to database failed! Data may be lost on refresh.\nError: " + err.message);
-            });
+        // 2. Dual-Strategy Sync: Race Network vs Time
+        const serverPromise = db.collection('members').add(newMember);
 
-        // Return immediately
+        // Timeout Promise: If server takes > 2500ms, we assume "Offline Success" 
+        // because we enabled persistence in firebase-init.js
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 2500));
+
+        try {
+            const result = await Promise.race([serverPromise, timeoutPromise]);
+
+            if (result === 'TIMEOUT') {
+                console.warn("Network slow - assuming Offline Persistence saved it.");
+                // We let the background process handle the actual sync
+                // Do NOT throw error, just proceed.
+            } else {
+                console.log("Synced to Firebase instantly with ID:", result.id);
+            }
+        } catch (err) {
+            console.error("Firebase Sync Failed:", err);
+            // Only revert if it's a REAL error (permission, logic), not network timeout
+            this.revertOptimisticAdd(newMember.id);
+            throw new Error("Save failed: " + err.message);
+        }
+
         return newMember;
+    },
+
+    revertOptimisticAdd: function (tempId) {
+        try {
+            const cachedParams = localStorage.getItem('wfc_members_cache');
+            if (cachedParams) {
+                let currentMembers = JSON.parse(cachedParams);
+                currentMembers = currentMembers.filter(m => m.id !== tempId);
+                localStorage.setItem('wfc_members_cache', JSON.stringify(currentMembers));
+            }
+        } catch (e) { console.error(e); }
     },
 
     deleteMember: async function (id) {

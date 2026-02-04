@@ -71,6 +71,9 @@ const AuthService = {
     logout: function () {
         auth.signOut().then(() => {
             localStorage.removeItem('currentUser');
+            // Do NOT clear data caches - this causes data loss if sync pending
+            // wfc_members_cache, etc. should persist for "Offline" support
+
             window.location.href = 'login.html';
         });
     },

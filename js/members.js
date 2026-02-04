@@ -14,10 +14,30 @@ const MemberController = {
         try {
             await this.renderTable();
             await this.populatePackages();
-            this.bindEvents();
+            this.bindSearch(); // Ensure search is bound
         } catch (e) {
             console.error('MemberController Init Error:', e);
             alert("Error loading members: " + e.message);
+        }
+    },
+
+    bindSearch: function () {
+        const searchInput = document.getElementById('memberSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.renderTable(e.target.value);
+            });
+
+            // Add Enter Key Shortcut
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const firstViewBtn = document.querySelector('#membersTableBody button');
+                    if (firstViewBtn) {
+                        firstViewBtn.click();
+                        searchInput.blur(); // Remove focus from search
+                    }
+                }
+            });
         }
     },
 
@@ -48,7 +68,7 @@ const MemberController = {
     },
 
     // --- Data Logic ---
-    renderTable: async function () {
+    renderTable: async function (filterText = '') {
         const tbody = document.getElementById('membersTableBody');
         if (!tbody) {
             console.error('CRITICAL: membersTableBody not found in DOM');
@@ -56,14 +76,23 @@ const MemberController = {
         }
 
         try {
-            // Show Loading State
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--gold);">Loading members from database...</td></tr>';
+            // Show Loading State only if not filtering (filtering should be instant-ish)
+            if (!filterText) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--gold);">Loading members from database...</td></tr>';
 
             // ASYNC Call to Store (Firebase)
-            // Note: We might want to clear cache here to be safe if we rely on realtime updates,
-            // but for now let's trust the store (which might fetch fresh).
             const members = await Store.getMembers();
-            console.log('Render Table Data:', members);
+
+            // FILTER LOGIC
+            let displayMembers = members;
+            if (filterText) {
+                const term = filterText.toLowerCase();
+                displayMembers = members.filter(m =>
+                    (m.name && m.name.toLowerCase().includes(term)) ||
+                    (m.id && m.id.toLowerCase().includes(term))
+                );
+            }
+
+            console.log('Rendering members count:', displayMembers.length);
 
             if (!members || members.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No members found. Click "+ New Member" to add one.</td></tr>';
@@ -118,13 +147,30 @@ const MemberController = {
 
             this.currentMemberId = id;
 
-            // Populate Modal
+            // Populate Modal View
             document.getElementById('modal-name').textContent = member.name;
             document.getElementById('modal-package').textContent = member.package;
             document.getElementById('modal-expiry').textContent = member.expiryDate;
             document.getElementById('modal-phone').textContent = member.phone || 'N/A';
 
-            // Re-calc Status for Modal too
+            // Populate Modal Edit Inputs
+            document.getElementById('edit-name').value = member.name;
+            document.getElementById('edit-expiry').value = member.expiryDate;
+            document.getElementById('edit-phone').value = member.phone || '';
+
+            // Populate Edit Package Select
+            const packSelect = document.getElementById('edit-package');
+            packSelect.innerHTML = document.getElementById('packageSelect').innerHTML; // Clone options
+            // Try to set value by text match since we stored Package Name, not ID (Legacy choice)
+            // Ideally we should fix DB to store ID, but for now loop options
+            for (let i = 0; i < packSelect.options.length; i++) {
+                if (packSelect.options[i].text.includes(member.package)) {
+                    packSelect.selectedIndex = i;
+                    break;
+                }
+            }
+
+            // Re-calc Status
             const today = new Date().toISOString().split('T')[0];
             let status = member.status;
             if (member.expiryDate < today) status = 'Expired';
@@ -132,6 +178,9 @@ const MemberController = {
             const statusEl = document.getElementById('modal-status');
             statusEl.textContent = status;
             statusEl.className = status === 'Active' ? 'status-badge status-active' : 'status-badge status-expired';
+
+            // Reset UI to View Mode
+            this.disableEditMode();
 
             // Show
             document.getElementById('member-details-modal').style.display = 'block';
@@ -143,6 +192,64 @@ const MemberController = {
         } catch (e) {
             console.error(e);
             alert("Error viewing member");
+        }
+    },
+
+    enableEditMode: function () {
+        document.getElementById('modal-view-mode').style.display = 'none';
+        document.getElementById('modal-edit-mode').style.display = 'block';
+        document.getElementById('modal-actions-view').style.display = 'none';
+        document.getElementById('modal-actions-edit').style.display = 'block';
+    },
+
+    disableEditMode: function () {
+        document.getElementById('modal-view-mode').style.display = 'block';
+        document.getElementById('modal-edit-mode').style.display = 'none';
+        document.getElementById('modal-actions-view').style.display = 'block';
+        document.getElementById('modal-actions-edit').style.display = 'none';
+    },
+
+    saveEdit: async function () {
+        const id = this.currentMemberId;
+        const btn = document.getElementById('btn-save-edit');
+        if (!id) return;
+
+        // 1. UI Loading State
+        const originalText = btn ? btn.innerText : 'Save Changes';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+        }
+
+        const updates = {
+            name: document.getElementById('edit-name').value,
+            phone: document.getElementById('edit-phone').value,
+            expiryDate: document.getElementById('edit-expiry').value
+        };
+
+        // Package Special Logic
+        const packSelect = document.getElementById('edit-package');
+        if (packSelect.selectedIndex >= 0) {
+            const text = packSelect.options[packSelect.selectedIndex].text;
+            updates.package = text.split(' - ')[0].trim();
+        }
+
+        try {
+            await Store.updateMember(id, updates);
+
+            // Success Feedback
+            alert("Member updated successfully!");
+            this.disableEditMode();
+            this.closeModal();
+            this.renderTable();
+        } catch (e) {
+            alert("Update failed: " + e.message);
+        } finally {
+            // Restore Button
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
         }
     },
 

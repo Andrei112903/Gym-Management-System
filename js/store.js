@@ -172,6 +172,55 @@ const Store = {
         return newMember;
     },
 
+    updateMember: async function (id, updates) {
+        // Optimistic Update (Always update cache first)
+        this.updateLastWrite();
+        try {
+            const cachedParams = localStorage.getItem('wfc_members_cache');
+            if (cachedParams) {
+                let currentMembers = JSON.parse(cachedParams);
+                const index = currentMembers.findIndex(m => m.id === id);
+                if (index !== -1) {
+                    currentMembers[index] = { ...currentMembers[index], ...updates };
+                    localStorage.setItem('wfc_members_cache', JSON.stringify(currentMembers));
+                }
+            }
+        } catch (e) { console.error(e); }
+
+        // Server Sync (Background-ish with Timeout)
+        // We race the network update against a 2.5s clock.
+        // Use an async wrapper for the complex logic
+        const serverUpdateTask = async () => {
+            if (id.startsWith('loc_')) {
+                const q = await db.collection('members').where('id', '==', id).get();
+                if (!q.empty) {
+                    await db.collection('members').doc(q.docs[0].id).update(updates);
+                }
+            } else {
+                await db.collection('members').doc(id).update(updates);
+            }
+            return "SUCCESS";
+        };
+
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 2500));
+
+        try {
+            const result = await Promise.race([serverUpdateTask(), timeoutPromise]);
+
+            if (result === 'TIMEOUT') {
+                console.warn("Edit sync timed out (slow network) - proceeding with local success.");
+            } else {
+                console.log("Updated on server:", id);
+            }
+        } catch (err) {
+            console.error("Update failed:", err);
+            // Ignore offline/network errors for UI purposes
+            if (err.code === 'unavailable') return true;
+            throw err;
+        }
+        return true;
+    },
+
     revertOptimisticAdd: function (tempId) {
         try {
             const cachedParams = localStorage.getItem('wfc_members_cache');

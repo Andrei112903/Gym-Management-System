@@ -248,6 +248,58 @@ body::after {
     display: none;
 }
 
+/* --- Sidebar Utilities --- */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 3rem;
+}
+
+.sidebar-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+}
+
+.nav-links {
+    list-style: none;
+    flex: 1;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: var(--transition);
+    font-size: 0.95rem;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: rgba(229, 9, 20, 0.1);
+    color: var(--gold);
+}
+
+.nav-link svg {
+    width: 20px;
+    height: 20px;
+}
+
+.user-profile {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 /* --- New Styles for Dashboard Content --- */
 
 /* Tables */

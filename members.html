@@ -263,9 +263,14 @@
 
             <!-- Sub-view: Toggle between List and Add -->
             <div id="members-list-view">
-                <div class="section-header">
+                <div class="section-header" style="justify-content: space-between; gap: 1rem;">
                     <h2>Member Directory</h2>
-                    <button class="cta-button" onclick="MemberController.showAddForm()">+ New Member</button>
+                    <div style="flex: 1; max-width: 400px; display: flex; gap: 10px;">
+                        <input type="text" id="memberSearch" placeholder="Search by name or ID..." class="styled-input"
+                            style="padding: 8px 15px; font-size: 0.9rem;">
+                        <button class="cta-button" onclick="MemberController.showAddForm()"
+                            style="white-space: nowrap;">+ New Member</button>
+                    </div>
                 </div>
 
                 <div class="glass-card" style="padding:0; overflow:hidden;">
@@ -337,40 +342,80 @@
 
                 <h2 style="color:var(--gold); margin-bottom:1.5rem;">Member Details</h2>
 
-                <div class="detail-row" style="margin-bottom:1rem;">
-                    <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Full Name</label>
-                    <div id="modal-name" style="font-size:1.2rem; font-weight:600;">-</div>
+                <div id="modal-view-mode">
+                    <div class="detail-row" style="margin-bottom:1rem;">
+                        <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Full Name</label>
+                        <div id="modal-name" style="font-size:1.2rem; font-weight:600;">-</div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Membership
+                                Package</label>
+                            <div id="modal-package" style="color:var(--text-main);">-</div>
+                        </div>
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Current
+                                Status</label>
+                            <div id="modal-status">-</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:2rem;">
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Expiry Date</label>
+                            <div id="modal-expiry">-</div>
+                        </div>
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Phone</label>
+                            <div id="modal-phone">-</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-                    <div class="detail-row">
-                        <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Membership
-                            Package</label>
-                        <div id="modal-package" style="color:var(--text-main);">-</div>
+                <div id="modal-edit-mode" style="display:none;">
+                    <div class="detail-row" style="margin-bottom:1rem;">
+                        <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Full Name</label>
+                        <input type="text" id="edit-name" class="styled-input">
                     </div>
-                    <div class="detail-row">
-                        <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Current Status</label>
-                        <div id="modal-status">-</div>
-                    </div>
-                </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:2rem;">
-                    <div class="detail-row">
-                        <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Expiry Date</label>
-                        <div id="modal-expiry">-</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Membership
+                                Package</label>
+                            <select id="edit-package" class="styled-select"></select>
+                        </div>
+                        <div class="detail-row">
+                            <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Expiry Date</label>
+                            <input type="date" id="edit-expiry" class="styled-input">
+                        </div>
                     </div>
-                    <div class="detail-row">
+
+                    <div style="margin-bottom:2rem;">
                         <label style="color:var(--text-muted); display:block; font-size:0.8rem;">Phone</label>
-                        <div id="modal-phone">-</div>
+                        <input type="tel" id="edit-phone" class="styled-input">
                     </div>
                 </div>
 
                 <div
                     style="display:flex; justify-content:space-between; border-top:1px solid var(--glass-border); padding-top:1.5rem;">
-                    <button class="cta-button" onclick="MemberController.closeModal()"
-                        style="background:transparent; border:1px solid var(--text-muted); color:var(--text-main);">Close</button>
+
+                    <div id="modal-actions-view">
+                        <button class="cta-button" onclick="MemberController.closeModal()"
+                            style="background:transparent; border:1px solid var(--text-muted); color:var(--text-main); margin-right:10px;">Close</button>
+                        <button class="cta-button" onclick="MemberController.enableEditMode()"
+                            style="background:var(--glass-border);">Edit Details</button>
+                    </div>
+
+                    <div id="modal-actions-edit" style="display:none;">
+                        <button class="cta-button" onclick="MemberController.disableEditMode()"
+                            style="background:transparent; border:1px solid var(--text-muted); color:var(--text-main); margin-right:10px;">Cancel</button>
+                        <button class="cta-button" id="btn-save-edit" onclick="MemberController.saveEdit()"
+                            style="background:var(--gold); color:black;">Save Changes</button>
+                    </div>
+
                     <button class="cta-button" id="btn-delete-member"
-                        style="background:rgba(255,0,0,0.2); border:1px solid red; color:red;">Delete Member</button>
+                        style="background:rgba(255,0,0,0.2); border:1px solid red; color:red;">Delete</button>
                 </div>
             </div>
         </div>

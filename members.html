@@ -211,7 +211,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="dashboard.html" class="nav-link">
+                <a href="reports.html" class="nav-link">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="20" x2="12" y2="10"></line>
                         <line x1="18" y1="20" x2="18" y2="4"></line>
@@ -221,7 +221,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="dashboard.html" class="nav-link">
+                <a href="hr.html" class="nav-link">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -234,17 +234,16 @@
         </ul>
 
         <div class="user-profile">
-            <div class="user-avatar" id="userAvatar">U</div>
+            <div id="userAvatar" class="user-avatar">A</div>
             <div class="user-info">
                 <h4 id="userName">User</h4>
-                <p id="userRole">Loading...</p>
+                <p id="userRole">Administrator</p>
             </div>
-            <button onclick="AuthService.logout()"
-                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer;">
+            <button onclick="event.stopPropagation(); AuthService.logout()"
+                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; opacity: 0.6;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
                 </svg>
             </button>
         </div>
@@ -446,6 +445,7 @@
     <script src="js/config.js"></script>
     <script src="js/members.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
 
     <script>
         // Check Login
@@ -455,13 +455,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             const user = AuthService.getCurrentUser();
             if (user) {
-                document.getElementById('userName').textContent = user.username || user.email.split('@')[0];
+                document.getElementById('userName').textContent = user.username || user.email || 'Admin';
                 document.getElementById('userRole').textContent = user.role;
-                document.getElementById('userAvatar').textContent = (user.username || user.email)[0].toUpperCase();
+                document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
                 // Apply RBAC
                 if (user.role !== 'admin') {
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
                 }
+
+                ProfileModule.init();
             }
             // Set Date
             const dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };

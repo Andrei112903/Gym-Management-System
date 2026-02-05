@@ -210,7 +210,17 @@ const CheckInController = {
             } else {
                 this.showStatus('valid', 'Access Granted', `${member.name}<br>${member.package} valid until ${member.expiryDate}`);
 
-                // TODO: Log Visit in DB
+                // Log Visit in DB for Live Reports
+                await db.collection('attendance_logs').add({
+                    memberId: member.id,
+                    memberName: member.name,
+                    action: 'Check In',
+                    type: 'member',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                    date: today
+                });
+
                 this.addToRecent(member.name, 'Success');
             }
 

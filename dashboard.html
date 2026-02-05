@@ -255,7 +255,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="#" class="nav-link" data-page="reports" onclick="loadPage('reports'); return false;">
+                <a href="reports.html" class="nav-link" data-page="reports">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="20" x2="12" y2="10"></line>
                         <line x1="18" y1="20" x2="18" y2="4"></line>
@@ -283,8 +283,8 @@
                 <h4 id="userName">Admin User</h4>
                 <p id="userRole">Administrator</p>
             </div>
-            <button onclick="AuthService.logout()"
-                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer;">
+            <button onclick="event.stopPropagation(); AuthService.logout()"
+                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; opacity: 0.6;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
@@ -346,10 +346,38 @@
                 <div class="glass-card" style="padding:1.5rem;">
                     <h3 style="margin-bottom:1rem;">Quick Actions</h3>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="cta-button" onclick="loadPage('checkin')">Check In Member</button>
-                        <button class="cta-button" onclick="loadPage('members')"
+                        <button class="cta-button" onclick="window.location.href='checkin.html'">Check In
+                            Member</button>
+                        <button class="cta-button" onclick="window.location.href='members.html?action=add'"
                             style="background:transparent; border:1px solid var(--gold); color:var(--text-main);">Add
                             New Member</button>
+                        <button class="cta-button" onclick="HRController.launchKiosk()"
+                            style="background:rgba(229, 9, 20, 0.2); border:1px solid var(--gold); color:var(--gold);">
+                            Launch Attendance Kiosk
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Attendance Table -->
+                <div class="glass-card" style="padding:1.5rem; margin-top:1.5rem;">
+                    <h3 style="margin-bottom:1rem;">Recent Staff Attendance</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Staff Name</th>
+                                    <th>Action</th>
+                                    <th>Time</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentAttendanceBody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">Loading
+                                        logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -483,15 +511,9 @@
         </div>
         </div>
 
-        <!-- View: Reports -->
-        <div id="view-reports" style="display:none;">
-            <div class="section-header">
-                <h2>Financial & Member Reports</h2>
-                <div class="date-display">Real-time Data</div>
-            </div>
-            <h2>Reports</h2>
-        </div>
-    </main> <!-- Kiosk Mode Overlay -->
+    </main>
+
+    <!-- Kiosk Mode Overlay -->
     <div id="kiosk-overlay" class="modal-overlay" style="display:none; background: #000; z-index: 9999;">
         <div style="text-align:center; padding: 2rem;">
             <h1 style="color:var(--gold); margin-bottom: 0.5rem;">Attendance Kiosk</h1>
@@ -512,13 +534,15 @@
             </button>
         </div>
     </div>
-    </main>
 
     <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="js/firebase-init.js"></script>
+
+    <!-- Shared Profile Module -->
+    <script src="js/profile.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/store.js"></script>
@@ -544,6 +568,8 @@
                 if (user.role !== 'admin') {
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
                 }
+
+                ProfileModule.init();
             }
 
             // Simple Router (Internal Views only)
@@ -589,7 +615,81 @@
             // Set Date
             const dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', dateOptions);
+
+            // Load Attendance Data
+            loadDashboardData();
         });
+
+        async function loadDashboardData() {
+            const tableBody = document.getElementById('recentAttendanceBody');
+            const totalMembersEl = document.querySelector('.stat-card:nth-child(1) .stat-value');
+            const checkinsTodayEl = document.querySelector('.stat-card:nth-child(2) .stat-value');
+            const revenueTodayEl = document.querySelector('.stat-card:nth-child(3) .stat-value');
+
+            if (!tableBody) return;
+
+            try {
+                // 1. Fetch Stats
+                const membersSnap = await db.collection('members').get();
+                if (totalMembersEl) totalMembersEl.textContent = membersSnap.size;
+
+                const today = new Date().toLocaleDateString('en-US');
+                const checkinsSnap = await db.collection('attendance_logs')
+                    .where('date', '==', today)
+                    .where('type', '==', 'member')
+                    .get();
+                if (checkinsTodayEl) checkinsTodayEl.textContent = checkinsSnap.size;
+
+                // Daily Revenue (Members who joined today)
+                let dailyRev = 0;
+                const packages = await Store.getPackages();
+                membersSnap.forEach(doc => {
+                    const m = doc.data();
+                    if (m.joinDate === today) {
+                        const pack = packages.find(p => p.name === m.package);
+                        if (pack) dailyRev += pack.price;
+                    }
+                });
+                if (revenueTodayEl) revenueTodayEl.textContent = '₱' + dailyRev.toLocaleString();
+
+                // 2. Fetch Logs
+                const snapshot = await db.collection('attendance_logs')
+                    .orderBy('timestamp', 'desc')
+                    .limit(10)
+                    .get();
+
+                if (snapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">No recent attendance logs.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = snapshot.docs.map(doc => {
+                    const log = doc.data();
+                    const actionClass = log.action === 'Clock In' ? 'status-active' : 'status-expired';
+                    const typeLabel = log.type === 'member' ? 'MEMBER' : 'STAFF';
+                    const typeClass = log.type === 'member' ? 'background:rgba(0,180,255,0.1); color:#00b4ff;' : 'background:rgba(255,215,0,0.1); color:var(--gold);';
+                    const name = log.staffName || log.memberName || 'Unknown';
+
+                    return `
+                        <tr>
+                            <td>
+                                <strong>${name}</strong>
+                                <span style="display:inline-block; font-size:0.6rem; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:700; ${typeClass}">${typeLabel}</span>
+                            </td>
+                            <td><span class="status-badge ${actionClass}">${log.action}</span></td>
+                            <td>${log.time}</td>
+                            <td style="color:var(--text-muted);">${log.date}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error("Dashboard Load Error:", err);
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:red;">Failed to load logs.</td></tr>';
+            }
+        }
+
+        // Admin Profile logic now handled by ProfileModule (js/profile.js)
     </script>
 </body>
 

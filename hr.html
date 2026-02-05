@@ -155,7 +155,7 @@
                 </a>
             </li>
             <li class="nav-item admin-only">
-                <a href="dashboard.html" class="nav-link">
+                <a href="reports.html" class="nav-link">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="20" x2="12" y2="10"></line>
                         <line x1="18" y1="20" x2="18" y2="4"></line>
@@ -178,14 +178,14 @@
             </li>
         </ul>
 
-        <div class="user-profile"
-            style="margin-top:auto; padding-top:1.5rem; display:flex; gap:10px; align-items:center;">
-            <div id="userAvatar" class="user-avatar">U</div>
+        <div class="user-profile">
+            <div id="userAvatar" class="user-avatar">A</div>
             <div class="user-info">
-                <h4 id="userName" style="color:white; margin:0;">Admin</h4>
+                <h4 id="userName">Admin</h4>
+                <p id="userRole">Administrator</p>
             </div>
-            <button onclick="AuthService.logout()"
-                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer;">
+            <button onclick="event.stopPropagation(); AuthService.logout()"
+                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; opacity: 0.6;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
@@ -269,10 +269,14 @@
                             <strong id="gen-username" style="color:var(--gold);">---</strong>
                         </div>
                         <div>
-                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">TRIAL PIN</span>
+                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">SECURITY PIN</span>
                             <strong id="gen-pin" style="color:var(--gold);">---</strong>
                         </div>
                     </div>
+                    <p
+                        style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1.5rem; opacity:0.7; text-align:center;">
+                        Staff will use <strong>Username + PIN</strong> for device linking. Password is auto-generated.
+                    </p>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end;">
                         <button type="button" class="cta-button" onclick="HRController.closeAddForm()"
@@ -310,15 +314,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/store.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
     <script src="js/hr.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            AuthService.requireLogin();
+            AuthService.requireLogin('admin');
             const user = AuthService.getCurrentUser();
             if (user) {
-                document.getElementById('userName').textContent = user.username || 'Admin';
-                document.getElementById('userAvatar').textContent = (user.username || 'A')[0].toUpperCase();
+                document.getElementById('userName').textContent = user.username || user.email || 'Admin';
+                document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
+
+                ProfileModule.init();
             }
             // Set Date
             const dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };

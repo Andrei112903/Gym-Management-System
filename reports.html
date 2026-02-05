@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Reports - Winners Fit Camp</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: rgba(10, 10, 10, 0.95);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            z-index: 100;
+        }
+
+        .main-content {
+            flex: 1;
+            height: 100vh;
+            overflow-y: auto;
+            position: relative;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+        }
+
+        .content-area {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .chart-container {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            height: 350px;
+            position: relative;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .stat-card h3 {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-card .trend {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .trend.up {
+            color: #00ff88;
+        }
+
+        .trend.down {
+            color: #ff3333;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .table-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 20px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="icon.png" alt="Logo" class="sidebar-logo">
+            <h2 style="color:var(--text-main); font-weight:700;">Winners Fit</h2>
+        </div>
+
+        <ul class="nav-links" style="list-style:none;">
+            <li class="nav-item">
+                <a href="dashboard.html" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="members.html" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                    </svg>
+                    Members
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="checkin.html" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    Check-In
+                </a>
+            </li>
+            <li class="nav-item admin-only">
+                <a href="reports.html" class="nav-link active"
+                    style="color:var(--gold); background:rgba(229,9,20,0.1); border-radius:12px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="20" x2="12" y2="10"></line>
+                        <line x1="18" y1="20" x2="18" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="16"></line>
+                    </svg>
+                    Reports
+                </a>
+            </li>
+            <li class="nav-item admin-only">
+                <a href="hr.html" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    HR & Staff
+                </a>
+            </li>
+        </ul>
+
+        <div class="user-profile">
+            <div id="userAvatar" class="user-avatar">A</div>
+            <div class="user-info">
+                <h4 id="userName">Admin</h4>
+                <p id="userRole">Administrator</p>
+            </div>
+            <button onclick="event.stopPropagation(); AuthService.logout()"
+                style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; opacity:0.6;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header
+            style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="color:var(--text-main); font-size: 1.5rem;">Financial Analytics</h1>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <select id="timeRange"
+                    style="background:#000; color:white; border:1px solid var(--glass-border); padding:5px 10px; border-radius:8px; outline:none;">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30" selected>Last 30 Days</option>
+                    <option value="90">Last 3 Months</option>
+                </select>
+                <div id="currentDate" style="color:var(--text-muted);">Feb 2026</div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <!-- Stats Summary -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <h3>Monthly Revenue</h3>
+                    <div class="value" id="rev-monthly">₱0</div>
+                    <div class="trend up">↑ 12% vs last month</div>
+                </div>
+                <div class="stat-card">
+                    <h3>New Subscriptions</h3>
+                    <div class="value" id="sub-new">0</div>
+                    <div class="trend up">↑ 5% vs last week</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Member Footfall</h3>
+                    <div class="value" id="footfall">0</div>
+                    <div class="trend down">↓ 2% peak hours</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Avg. LTV</h3>
+                    <div class="value" id="ltv-avg">₱0</div>
+                    <div class="trend up">↑ Stable</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="chart-container">
+                <h3 style="margin-bottom:1rem; font-size:1rem; opacity:0.8;">Revenue Growth</h3>
+                <canvas id="revenueChart"></canvas>
+            </div>
+
+            <div class="report-grid">
+                <!-- Recent Transactions -->
+                <div class="table-card">
+                    <h3 style="margin-bottom:1.5rem;">Recent Payments</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Package</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionBody">
+                                <!-- JS Injected -->
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:2rem; opacity:0.5;">Generating
+                                        report...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Package Mix -->
+                <div class="table-card">
+                    <h3 style="margin-bottom:1.5rem;">Popular Packages</h3>
+                    <div style="height:250px;">
+                        <canvas id="packageChart"></canvas>
+                    </div>
+                    <div id="packageStats" style="margin-top:1.5rem; display:flex; flex-direction:column; gap:10px;">
+                        <!-- JS Injected -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Dependencies -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/reports.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            AuthService.requireLogin('admin');
+            const user = AuthService.getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.username || user.email || 'Admin';
+                document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
+
+                ProfileModule.init();
+            }
+            // Set Date
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            ReportsController.init();
+        });
+    </script>
+</body>
+
+</html>

@@ -7,60 +7,49 @@ const AuthService = {
     /**
      * Attempt to log in with Email/Password
      */
-    login: async function (email, password, selectedRole) {
+    login: async function (input, password) {
         try {
-            // 1. Sign in with Firebase
+            let email = input;
+
+            // 1. Resolve Username to Email if needed
+            if (!input.includes('@')) {
+                const userSnapshot = await db.collection('users').where('username', '==', input).limit(1).get();
+                if (userSnapshot.empty) {
+                    throw new Error("Username not found. Please use your full email or a valid username.");
+                }
+                email = userSnapshot.docs[0].data().email;
+            }
+
+            // 2. Sign in with Firebase
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
-            // 2. Check Role in Firestore 'users' collection
-            // Note: For first run, if user doc doesn't exist, we might proceed or fail.
-            // For this demo, we will allow login if Auth succeeds, but warn if role mismatch.
-
-            let role = selectedRole; // Default to what they selected if DB fails
-
-            try {
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                if (userDoc.exists) {
-                    role = userDoc.data().role;
-                } else {
-                    // Create doc if missing (and we are online)
-                    db.collection('users').doc(user.uid).set({
-                        email: email,
-                        role: selectedRole, // Trust them for first creation
-                        name: email.split('@')[0]
-                    }).catch(e => console.warn("Could not create user doc:", e));
-                }
-            } catch (dbError) {
-                console.warn("Firestore Check Failed (Offline?):", dbError);
-                console.log("Proceeding with selected role:", selectedRole);
-                // We allow login because Auth (password) succeeded.
-                // This 'Fails Open' for the setup phase.
+            // 3. Get Role from Firestore
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (!userDoc.exists) {
+                // This shouldn't happen if user created through our portal
+                throw new Error("User record not found in database. Contact Admin.");
             }
 
-            if (role !== selectedRole && role !== 'admin') {
-                // Admin can login as anyone basically, or we strict check
-                if (selectedRole === 'admin' && role !== 'admin') {
-                    throw new Error("Access Denied: You are not an Admin.");
-                }
-            }
+            const userData = userDoc.data();
+            const role = userData.role || 'staff';
 
-            // Session Object (optional, firebase handles persistence mostly)
-            const session = {
+            // 4. Save to Session
+            const sessionData = {
                 uid: user.uid,
                 email: user.email,
+                username: userData.username || userData.name || email.split('@')[0],
                 role: role,
                 loginTime: new Date().toISOString()
             };
-            localStorage.setItem('currentUser', JSON.stringify(session));
+            localStorage.setItem('currentUser', JSON.stringify(sessionData));
 
-            // Redirect
+            // 5. Redirect
             window.location.href = 'dashboard.html';
             return true;
 
         } catch (error) {
             console.error("Login Failed:", error);
-            // Propagate error to UI
             throw error;
         }
     },
@@ -90,17 +79,65 @@ const AuthService = {
     /**
      * Guard a page
      */
-    requireLogin: function () {
-        // Firebase Listener for robust check
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // If firebase says no user, boot them
-                // window.location.href = 'login.html';
+    requireLogin: function (requiredRole = null) {
+        const user = this.getCurrentUser();
+
+        if (!user) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Role-based guarding
+        if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
+            alert("Access Denied: You do not have permission to view this page.");
+            window.location.href = 'dashboard.html';
+            return;
+        }
+
+        // Firebase Listener for session persistence
+        auth.onAuthStateChanged(firebaseUser => {
+            if (!firebaseUser) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'login.html';
             }
         });
+    },
 
-        if (!this.getCurrentUser()) {
-            window.location.href = 'login.html';
+    /**
+     * Check if any admin exists in the system
+     */
+    checkInitialSetup: async function () {
+        try {
+            const adminSnapshot = await db.collection('users').where('role', '==', 'admin').limit(1).get();
+            return adminSnapshot.empty;
+        } catch (err) {
+            console.warn("Initial Setup Check Failed:", err);
+            return false; // Fail safe
+        }
+    },
+
+    /**
+     * Create the first admin user
+     */
+    createFirstAdmin: async function (email, password, username) {
+        try {
+            // 1. Create in Firebase Auth
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+
+            // 2. Create in Firestore
+            await db.collection('users').doc(user.uid).set({
+                email: email,
+                username: username,
+                role: 'admin',
+                name: username,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return true;
+        } catch (error) {
+            console.error("Admin Creation Failed:", error);
+            throw error;
         }
     }
 };

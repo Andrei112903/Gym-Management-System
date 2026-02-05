@@ -90,6 +90,7 @@ body::after {
     font-weight: 700;
     background: linear-gradient(135deg, var(--gold), #FFF);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: 0.5px;
 }
@@ -376,4 +377,54 @@ body::after {
 .section-header h2 {
     font-size: 1.5rem;
     color: var(--text-main);
+}
+
+/* Centralized Profile Styles */
+.user-profile {
+    margin-top: auto;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.user-profile:hover {
+    background: rgba(229, 9, 20, 0.08);
+    border-color: rgba(229, 9, 20, 0.2);
+    transform: translateY(-2px);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.user-info h4 {
+    font-size: 0.9rem;
+    margin: 0;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.user-info p {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin: 0;
 }

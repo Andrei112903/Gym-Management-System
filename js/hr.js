@@ -16,19 +16,22 @@ const HRController = {
 
     loadData: async function () {
         try {
-            // Load Staff
-            const staffSnapshot = await db.collection('staff').orderBy('createdAt', 'desc').get();
+            // Load Staff from 'users' collection where role is 'staff'
+            const staffSnapshot = await db.collection('users').where('role', '==', 'staff').get();
             this.state.staff = staffSnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
 
-            // Load Attendance Logs (last 10)
-            const logSnapshot = await db.collection('attendance_logs').orderBy('timestamp', 'desc').limit(10).get();
-            this.state.attendanceLogs = logSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            // Load Attendance Logs (Load all and filter client-side to keep legacy logs)
+            const logSnapshot = await db.collection('attendance_logs')
+                .orderBy('timestamp', 'desc')
+                .limit(20)
+                .get();
+
+            this.state.attendanceLogs = logSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(log => log.type !== 'member'); // Only hide if explicitly marked as member
         } catch (error) {
             console.warn("Using mock data (DB error or empty):", error);
         }
@@ -75,7 +78,8 @@ const HRController = {
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+            <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                <!-- Staff Directory -->
                 <div class="glass-card">
                     <h3>Staff Directory</h3>
                     <div class="table-container" style="margin-top:1rem;">
@@ -90,36 +94,73 @@ const HRController = {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${this.state.staff.map(s => `
+                                ${this.state.staff.map(s => {
+            const isLinked = !!s.deviceId;
+            return `
                                     <tr>
                                         <td><strong>${s.firstName} ${s.lastName}</strong></td>
                                         <td style="color:var(--text-muted);">${s.username}</td>
-                                        <td style="font-family:monospace; letter-spacing:2px;">${s.pin}</td>
-                                        <td><span class="status-badge status-${s.status}">${s.status}</span></td>
+                                        <td style="font-family:monospace; letter-spacing:2px; color:rgba(255,255,255,0.4);">
+                                            <span class="masked-pin">••••</span>
+                                            <span class="real-pin" style="display:none;">${s.pin}</span>
+                                            <i class="eye-icon" onclick="HRController.togglePin(this)" style="cursor:pointer; margin-left:8px; font-style:normal; opacity:0.6;">👁️</i>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge ${s.lastAction === 'Clock Out' || !s.lastAction ? 'status-expired' : 'status-active'}">
+                                                ${s.lastAction || 'Out'}
+                                            </span>
+                                            ${isLinked ? '<div style="font-size:0.6rem; color:#00ff88; margin-top:4px;">Linked Device ✓</div>' : ''}
+                                        </td>
                                         <td style="text-align:right;">
-                                            <button class="cta-button" onclick="HRController.showRegisterModal('${s.id}', '${s.firstName} ${s.lastName}')" 
-                                                style="padding: 5px 10px; font-size: 0.7rem; background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;">
-                                                Register Device
-                                            </button>
+                                            ${isLinked ? `
+                                                <button class="cta-button" onclick="HRController.confirmResetDevice('${s.id}', '${s.firstName}')" 
+                                                    style="padding: 5px 10px; font-size: 0.7rem; background: rgba(229,9,20,0.1); border: 1px solid var(--gold); color: var(--gold);">
+                                                    Reset Device
+                                                </button>
+                                            ` : `
+                                                <button class="cta-button" onclick="HRController.showRegisterModal('${s.id}', '${s.firstName} ${s.lastName}')" 
+                                                    style="padding: 5px 10px; font-size: 0.7rem; background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;">
+                                                    Register Device
+                                                </button>
+                                            `}
                                         </td>
                                     </tr>
-                                `).join('')}
-                                ${this.state.staff.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No staff सदस्यों found.</td></tr>' : ''}
+                                `;
+        }).join('')}
+                                ${this.state.staff.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No staff members found.</td></tr>' : ''}
                             </tbody>
                         </table>
                     </div>
                 </div>
                 
+                <!-- Attendance Logs Table -->
                 <div class="glass-card">
-                    <h3>Recent Logs</h3>
-                    <div style="margin-top:1rem; display:flex; flex-direction:column; gap:10px;">
-                        ${this.state.attendanceLogs.map(log => `
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px;">
-                                <div><div style="font-weight:bold; font-size:0.9rem;">${log.staffName}</div><div style="font-size:0.75rem; color:var(--text-muted);">${log.action}</div></div>
-                                <div style="text-align:right;"><div style="color:var(--gold); font-weight:bold;">${log.time}</div></div>
-                            </div>
-                        `).join('')}
-                        ${this.state.attendanceLogs.length === 0 ? '<p style="color:var(--text-muted); text-align:center;">No logs today.</p>' : ''}
+                    <h3>Recent Attendance Logs</h3>
+                    <div class="table-container" style="margin-top:1rem;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Staff Member</th>
+                                    <th>Action</th>
+                                    <th>Time</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${this.state.attendanceLogs.map(log => {
+            const actionClass = log.action === 'Clock In' ? 'status-active' : 'status-expired';
+            return `
+                                    <tr>
+                                        <td><strong>${log.staffName}</strong></td>
+                                        <td><span class="status-badge ${actionClass}">${log.action}</span></td>
+                                        <td><strong style="color:var(--gold);">${log.time}</strong></td>
+                                        <td style="color:var(--text-muted);">${log.date}</td>
+                                    </tr>
+                                `;
+        }).join('')}
+                                ${this.state.attendanceLogs.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">No logs found today.</td></tr>' : ''}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -166,8 +207,9 @@ const HRController = {
     generateQR: function (token) {
         const container = document.getElementById('kiosk-qr-container');
         container.innerHTML = '';
-        const baseUrl = window.location.origin + window.location.pathname.replace('hr.html', 'attendance.html');
-        const finalUrl = `${baseUrl}?token=${token}`;
+        const pathParts = window.location.pathname.split('/');
+        pathParts[pathParts.length - 1] = 'attendance.html';
+        const finalUrl = window.location.origin + pathParts.join('/') + '?token=' + token;
 
         this.qrInstance = new QRCode(container, {
             text: finalUrl,
@@ -200,7 +242,10 @@ const HRController = {
         nameEl.textContent = staffName;
         container.innerHTML = '';
 
-        const baseUrl = window.location.origin + window.location.pathname.replace('hr.html', 'attendance.html');
+        const pathParts = window.location.pathname.split('/');
+        pathParts[pathParts.length - 1] = 'attendance.html';
+        const baseUrl = window.location.origin + pathParts.join('/');
+
         const registrationUrl = `${baseUrl}?action=register&staffId=${staffId}&token=${Math.random().toString(36).substring(2)}`;
 
         new QRCode(container, {
@@ -245,14 +290,24 @@ const HRController = {
 
     saveStaff: async function (e) {
         e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        const email = document.getElementById('staff-email').value.trim();
+        const pin = document.getElementById('gen-pin').textContent;
+        const username = document.getElementById('gen-username').textContent;
+
+        // Auto-generate password from PIN
+        const password = 'Staff' + pin;
+
         const staffData = {
             firstName: document.getElementById('staff-firstname').value.trim(),
             lastName: document.getElementById('staff-lastname').value.trim(),
-            email: document.getElementById('staff-email').value.trim(),
+            email: email,
             phone: document.getElementById('staff-phone').value.trim(),
             address: document.getElementById('staff-address').value.trim(),
-            username: document.getElementById('gen-username').textContent,
-            pin: document.getElementById('gen-pin').textContent,
+            username: username,
+            pin: pin,
             role: 'staff',
             status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -263,14 +318,66 @@ const HRController = {
             return;
         }
 
+        btn.innerHTML = '<span class="status-badge status-active">Registering Account...</span>';
+        btn.disabled = true;
+
         try {
-            await db.collection('staff').add(staffData);
-            alert("Staff successfully registered!");
+            // 1. Create Auth Account using a secondary app instance to NOT logout admin
+            // This is a "Premium" solution for client-side user management
+            const secondaryApp = firebase.initializeApp(firebase.app().options, 'Secondary');
+            const secondaryAuth = secondaryApp.auth();
+
+            const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+            const uid = userCredential.user.uid;
+
+            // 2. Save Integrated Record (to 'users' collection ONLY)
+            // This combines login info and HR info into one source of truth
+            await db.collection('users').doc(uid).set(staffData);
+
+            // Cleanup secondary app
+            await secondaryApp.delete();
+
+            alert(`${staffData.firstName} successfully registered as Staff! They can now log in with their username.`);
             this.closeAddForm();
             this.loadData();
         } catch (err) {
             console.error(err);
-            alert("Error saving staff record.");
+            alert("Registration Failed: " + err.message);
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    },
+
+    // --- Helpers ---
+    togglePin: function (el) {
+        const parent = el.parentElement;
+        const masked = parent.querySelector('.masked-pin');
+        const real = parent.querySelector('.real-pin');
+        if (masked.style.display === 'none') {
+            masked.style.display = 'inline';
+            real.style.display = 'none';
+            el.textContent = '👁️';
+        } else {
+            masked.style.display = 'none';
+            real.style.display = 'inline';
+            el.textContent = '🙈';
+        }
+    },
+
+    confirmResetDevice: async function (staffId, firstName) {
+        if (confirm(`Are you sure you want to unbind the device for ${firstName}? \n\nThis will allow them to register a new phone, but their current phone will no longer be able to clock in.`)) {
+            try {
+                await db.collection('users').doc(staffId).update({
+                    deviceId: firebase.firestore.FieldValue.delete(),
+                    profileSetupAt: firebase.firestore.FieldValue.delete()
+                });
+                alert("Device reset successfully.");
+                this.loadData();
+            } catch (err) {
+                console.error(err);
+                alert("Failed to reset device.");
+            }
         }
     }
 };

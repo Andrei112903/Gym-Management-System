@@ -239,6 +239,14 @@
             <h1 style="color:var(--gold); margin-bottom:0.5rem;">Daily Check-In</h1>
             <p style="color:var(--text-muted); margin-bottom:3rem;">Scan member code or enter name/ID to log a visit</p>
 
+            <div id="scanner-container" style="max-width: 500px; margin: 0 auto 2rem auto;">
+                <div id="reader"></div>
+                <button id="btn-toggle-camera" class="cta-button"
+                    style="background:var(--glass-border); margin-top:1rem;">
+                    📷 Start Camera
+                </button>
+            </div>
+
             <div class="search-hero">
                 <input type="text" id="checkinInput" class="hero-input" placeholder="Type Member Name or ID..."
                     autofocus>
@@ -268,6 +276,8 @@
     <script src="js/firebase-init.js"></script>
     <script src="js/store.js"></script>
     <script src="js/auth.js"></script>
+    <!-- QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- New Checkin Logic -->
     <script src="js/checkin.js"></script>
 

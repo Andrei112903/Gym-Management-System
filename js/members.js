@@ -144,11 +144,23 @@ const MemberController = {
     currentMemberId: null,
 
     viewMember: async function (id) {
+        console.log("Viewing Member ID:", id); // DEBUG
         try {
             const members = await Store.getMembers();
-            const member = members.find(m => m.id === id);
+            // console.log("Available IDs:", members.map(m => m.id)); // DEBUG - Uncomment if needed, lots of spam
+
+            // Try strict match first
+            let member = members.find(m => m.id === id);
+
+            // Fallback: Try loose match (in case of string/int mismatch)
             if (!member) {
-                alert("Member not found!");
+                console.warn("Strict match failed for ID:", id);
+                member = members.find(m => m.id == id);
+            }
+
+            if (!member) {
+                console.error("Member not found in store!", id);
+                alert("Member not found! ID: " + id);
                 return;
             }
 
@@ -189,8 +201,12 @@ const MemberController = {
             // Reset UI to View Mode
             this.disableEditMode();
 
-            // Show
+            // Show first (required for QR rendering in some browsers)
             document.getElementById('member-details-modal').style.display = 'block';
+
+            // GENERATE QR CODE
+            // Small timeout to ensure DOM render
+            setTimeout(() => this.generateQR(member.id), 200);
 
             // Bind Delete
             const delBtn = document.getElementById('btn-delete-member');
@@ -199,6 +215,34 @@ const MemberController = {
         } catch (e) {
             console.error(e);
             alert("Error viewing member");
+        }
+    },
+
+    generateQR: function (text) {
+        const container = document.getElementById('qrcode');
+        if (!container) return;
+
+        container.innerHTML = ''; // Clear previous
+
+        if (typeof QRCode === 'undefined') {
+            container.innerHTML = '<span style="color:red; font-size:0.8rem;">Library not loaded</span>';
+            console.error("QRCode library missing");
+            return;
+        }
+
+        try {
+            // Create QR
+            new QRCode(container, {
+                text: text,
+                width: 128,
+                height: 128,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } catch (e) {
+            console.error("QR Generation failed:", e);
+            container.innerText = "Error generating QR";
         }
     },
 
@@ -352,7 +396,10 @@ const MemberController = {
             const result = await withTimeout(Store.addMember(newMember), 15000);
             console.log("Add Member Result:", result);
 
-            alert(`Success! Member registered.`);
+            // 4. Send Email with QR Code (Async - don't block UI)
+            this.sendWelcomeEmail(newMember, result.id);
+
+            alert(`Success! Member registered and email sending...`);
 
             // Reset and show list
             document.getElementById('addMemberForm').reset();
@@ -362,6 +409,64 @@ const MemberController = {
             alert('Registration Failed: ' + e.message);
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = "Confirm Registration"; }
+        }
+    },
+
+    sendWelcomeEmail: function (member, memberId) {
+        console.log("Preparing Welcome Email for:", member.name);
+
+        // 1. Generate QR Data URI
+        // We use a temporary hidden container to generate the image
+        const tempContainer = document.createElement('div');
+
+        try {
+            const qr = new QRCode(tempContainer, {
+                text: memberId,
+                width: 256,
+                height: 256,
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Wait briefly for canvas/img to be generated
+            setTimeout(() => {
+                const img = tempContainer.querySelector('img');
+                if (img && img.src) {
+                    const qrDataUri = img.src;
+
+                    // 2. Send via EmailJS
+                    // NOTE: Keys are in js/config.js
+                    const serviceID = Config.emailjs.serviceId;
+                    const templateID = Config.emailjs.templateId;
+
+                    if (serviceID.includes("YOUR_")) {
+                        console.warn("EmailJS not configured. Check js/config.js");
+                        alert("Note: Email not sent. Please configure keys in js/config.js");
+                        return;
+                    }
+
+                    const templateParams = {
+                        to_name: member.name,
+                        to_email: member.email,
+                        member_package: member.package,
+                        expiry_date: member.expiryDate,
+                        qr_code: qrDataUri
+                    };
+
+                    emailjs.send(serviceID, templateID, templateParams)
+                        .then(() => {
+                            console.log('EMAIL SUCCESS!');
+                            alert("Welcome Email Sent Successfully!");
+                        }, (err) => {
+                            console.error('EMAIL FAILED...', err);
+                            alert("Email Failed to Send: " + JSON.stringify(err));
+                        });
+                } else {
+                    console.error("Failed to generate QR Image for email");
+                }
+            }, 100);
+
+        } catch (e) {
+            console.error("Email preparation failed:", e);
         }
     },
 

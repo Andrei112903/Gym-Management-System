@@ -8,6 +8,7 @@ const CheckInController = {
         console.log("CheckIn Controller Init");
         this.bindEvents();
         this.loadRecent();
+        this.initScanner();
     },
 
     bindEvents: function () {
@@ -18,6 +19,158 @@ const CheckInController = {
                     this.handleCheckIn(input.value);
                     input.value = ''; // Clear after enter
                 }
+            });
+        }
+    },
+
+    html5QrcodeScanner: null,
+    isScanning: false,
+    lastScanTime: 0, // Debounce timestamp
+
+    initScanner: function () {
+        // Toggle Button Logic
+        const toggleBtn = document.getElementById('btn-toggle-camera');
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                if (this.isScanning) {
+                    this.stopScanner();
+                    toggleBtn.textContent = "📷 Start Camera";
+                } else {
+                    this.startScanner();
+                    toggleBtn.textContent = "⏹ Stop Camera";
+                }
+            };
+        }
+    },
+
+    startScanner: function () {
+        // 1. Pre-check: Are there any cameras?
+        Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length) {
+                // Camera found, proceed!
+                this.launchScanner();
+            } else {
+                // No camera found
+                alert("No camera detected on this device. You can verify check-in by typing the ID manually.");
+                document.getElementById('btn-toggle-camera').textContent = "📷 Start Camera";
+                this.isScanning = false;
+            }
+        }).catch(err => {
+            // Permission denied or unsecure context (http)
+            console.warn("Camera check failed", err);
+
+            // UX Improvement: Don't alert() widely. Just show in the UI.
+            const reader = document.getElementById('reader');
+            if (reader) {
+                reader.innerHTML = `<div style="padding:2rem; color:red; border:1px dashed red;">
+                    <p>Camera access denied or no camera found.</p>
+                    <p style="font-size:0.8rem; color:var(--text-muted);">Error: ${err.message || err}</p>
+                    <p style="margin-top:10px; color:white;">👉 Use the search bar below to check in manually.</p>
+                </div>`;
+            }
+
+            document.getElementById('btn-toggle-camera').textContent = "📷 Start Camera";
+            this.isScanning = false;
+        });
+    },
+
+    launchScanner: async function () {
+        const reader = document.getElementById('reader');
+        if (!reader) return;
+
+        // CRITICAL FIX: Ensure previous scanner is gone before starting new one
+        if (this.html5QrcodeScanner) {
+            try {
+                await this.html5QrcodeScanner.clear();
+            } catch (e) {
+                console.warn("Cleanup error:", e);
+            }
+            this.html5QrcodeScanner = null;
+        }
+
+        // Reset debounce
+        this.lastScanTime = 0;
+
+        this.html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader",
+            {
+                fps: 15, // Smooth but not overloading
+                qrbox: { width: 300, height: 300 }, // Larger target
+                aspectRatio: 1.0,
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // Native Chip = INSTANT
+                },
+                videoConstraints: {
+                    facingMode: "environment",
+                    width: { ideal: 1280 }, // HD for clarity
+                }
+            },
+            /* verbose= */ false
+        );
+
+        this.html5QrcodeScanner.render(
+            (decodedText, decodedResult) => {
+                // Success Callback
+                const now = Date.now();
+                // 3 Second Cooldown to prevent spamming
+                if (now - this.lastScanTime < 3000) {
+                    return;
+                }
+                this.lastScanTime = now;
+
+                console.log(`Scan result: ${decodedText}`);
+
+                // 1. Play Sound
+                this.playBeep();
+
+                // 2. Process Check-in
+                this.handleCheckIn(decodedText);
+
+                // NOTE: We do NOT stop the scanner anymore.
+                // It stays open for the next person.
+            },
+            (errorMessage) => {
+                // Parse error, ignore common ones like "no QR found"
+                if (errorMessage.includes("NotFound")) {
+                    // Only log real errors, not "scanning..." noise
+                    // console.warn("Scanner Error:", errorMessage);
+                }
+            }
+        );
+        this.isScanning = true;
+    },
+
+    playBeep: function () {
+        try {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+
+            oscillator.type = "sine";
+            oscillator.frequency.value = 880; // High beep
+            gainNode.gain.value = 0.1; // Volume
+
+            oscillator.start();
+            setTimeout(() => {
+                oscillator.stop();
+                context.close(); // Clean up
+            }, 200); // 200ms beep
+        } catch (e) {
+            console.error("Audio beep failed", e);
+        }
+    },
+
+    stopScanner: function () {
+        if (this.html5QrcodeScanner) {
+            this.html5QrcodeScanner.clear().then(() => {
+                this.isScanning = false;
+                console.log("Scanner stopped");
+                // Remove the "Stop Scanning" button generated by lib if needed
+            }).catch(error => {
+                console.error("Failed to clear scanner", error);
             });
         }
     },
@@ -83,10 +236,10 @@ const CheckInController = {
             colorClass = 'status-expired';
         } else {
             icon = '❓';
-            // Default grey style for error
+            colorClass = 'status-error'; // Fallback class
         }
 
-        div.classList.add(colorClass);
+        if (colorClass) div.classList.add(colorClass);
         div.innerHTML = `
             <div class="status-icon">${icon}</div>
             <h2>${title}</h2>

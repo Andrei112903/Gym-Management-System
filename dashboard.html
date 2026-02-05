@@ -317,7 +317,7 @@
                                 <circle cx="9" cy="7" r="4"></circle>
                             </svg>
                         </div>
-                        <div class="stat-value">124</div>
+                        <div class="stat-value" id="stat-total-members">--</div>
                         <div class="stat-label">Total Members</div>
                     </div>
                     <div class="stat-card">
@@ -327,7 +327,7 @@
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
-                        <div class="stat-value">42</div>
+                        <div class="stat-value" id="stat-checkin-today">--</div>
                         <div class="stat-label">Checked In Today</div>
                     </div>
                     <div class="stat-card admin-only">
@@ -524,6 +524,7 @@
     <script src="js/store.js"></script>
     <script src="js/members.js"></script>
     <script src="js/hr.js"></script>
+    <script src="js/dashboard.js"></script>
     <!-- Auth MUST be last to handle redirects after other scripts load, though typically order matters for dependencies -->
     <script src="js/auth.js"></script>
     <script>
@@ -535,6 +536,8 @@
         // Initialize Dashboard
         document.addEventListener('DOMContentLoaded', () => {
             const user = AuthService.getCurrentUser();
+            DashboardController.init(); // INIT DASHBOARD METRICS
+
             if (user) {
                 document.getElementById('userName').textContent = user.username || user.email || 'Admin';
                 document.getElementById('userRole').textContent = user.role || 'Member';

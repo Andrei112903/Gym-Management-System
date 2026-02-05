@@ -11,6 +11,45 @@ const CheckInController = {
         this.initScanner();
     },
 
+    openTodayModal: async function () {
+        const modal = document.getElementById('checkin-modal');
+        const list = document.getElementById('checkin-list');
+        if (!modal || !list) return;
+
+        modal.style.display = 'flex';
+        list.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">Loading records...</div>';
+
+        const today = new Date().toISOString().split('T')[0];
+        const records = await Store.getCheckIns(today);
+
+        if (!records || records.length === 0) {
+            list.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No check-ins found for today.</div>';
+            return;
+        }
+
+        list.innerHTML = records.map(r => {
+            const time = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const statusColor = r.status === 'valid' ? '#00ff88' : '#ff3333';
+            return `
+                <div style="display:flex; align-items:center; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px; border-left:4px solid ${statusColor};">
+                    <div style="flex:1;">
+                        <div style="color:white; font-weight:bold; font-size:1.1rem;">${r.memberName || 'Unknown'}</div>
+                        <div style="color:var(--text-muted); font-size:0.85rem;">ID: ${r.memberId}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:white; font-weight:600;">${time}</div>
+                        <div style="color:${statusColor}; font-size:0.8rem; text-transform:uppercase;">${r.statusText || 'Checked In'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    closeModal: function () {
+        const modal = document.getElementById('checkin-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
     bindEvents: function () {
         const input = document.getElementById('checkinInput');
         if (input) {
@@ -207,10 +246,26 @@ const CheckInController = {
             if (isExpired) {
                 this.showStatus('expired', 'Membership Expired', `${member.name}<br>${member.package} expired on ${member.expiryDate}`, member.id);
                 // Optional: Play Error Sound
+
+                // Also log failed attempts? Yes, for security/records
+                Store.addCheckIn({
+                    memberId: member.id,
+                    memberName: member.name,
+                    status: 'expired',
+                    statusText: 'Membership Expired'
+                });
             } else {
                 this.showStatus('valid', 'Access Granted', `${member.name}<br>${member.package} valid until ${member.expiryDate}`);
 
-                // TODO: Log Visit in DB
+                // Log Visit in DB
+                const checkInData = {
+                    memberId: member.id,
+                    memberName: member.name,
+                    status: 'valid',
+                    statusText: 'Access Granted'
+                };
+
+                Store.addCheckIn(checkInData);
                 this.addToRecent(member.name, 'Success');
             }
 

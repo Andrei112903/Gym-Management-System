@@ -325,6 +325,92 @@ const Store = {
             { id: 'p3', name: 'Monthly Membership', price: 80, duration: 30 },
             { id: 'p4', name: 'Yearly Membership', price: 800, duration: 365 }
         ]
+    },
+
+    // --- Check-Ins ---
+    addCheckIn: async function (checkIn) {
+        // Optimistic Save
+        this.updateLastWrite();
+        const newRecord = {
+            id: 'chk_' + Date.now(),
+            timestamp: new Date().toISOString(),
+            ...checkIn
+        };
+
+        try {
+            // Local Cache
+            const cachedParams = localStorage.getItem('wfc_checkins_cache');
+            let current = cachedParams ? JSON.parse(cachedParams) : [];
+            current.unshift(newRecord);
+            // Limit local cache size to last 500 entries to prevent overflow
+            if (current.length > 500) current = current.slice(0, 500);
+            localStorage.setItem('wfc_checkins_cache', JSON.stringify(current));
+        } catch (e) { console.warn("Checkin cache failed", e); }
+
+        // Server Sync
+        try {
+            // Use fire-and-forget for speed, but catch errors
+            db.collection('checkins').add(newRecord)
+                .then(doc => console.log("Check-in synced:", doc.id))
+                .catch(e => console.error("Check-in sync failed:", e));
+
+            // ALSO Update Member Data (Last Visit) as requested
+            if (checkIn.memberId) {
+                this.updateMember(checkIn.memberId, { lastVisit: newRecord.timestamp });
+            }
+
+        } catch (e) {
+            console.error("DB Error:", e);
+        }
+    },
+
+    getCheckIns: async function (dateFilterStr = null) {
+        // 1. Try Cache First
+        let records = [];
+        const cachedParams = localStorage.getItem('wfc_checkins_cache');
+        if (cachedParams) {
+            records = JSON.parse(cachedParams);
+        }
+
+        // 2. Fetch from DB (If needed, or just rely on cache for "Today")
+        // For "Today", we might want to ensure we have latest from server
+        // if multiple devices are checking people in.
+        try {
+            let query = db.collection('checkins').orderBy('timestamp', 'desc').limit(100);
+            if (dateFilterStr) {
+                // simple client-side filter after fetch for now, 
+                // or if high volume, use where() clause.
+                // Firestore string dates work for where() if format matches ISO.
+                // query = query.where('timestamp', '>=', dateFilterStr).where('timestamp', '<', nextDay);
+            }
+
+            const snapshot = await query.get();
+            if (!snapshot.empty) {
+                const serverRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Merge (Simple: Server wins or Union)
+                // For a log, Union by ID is best.
+                const combined = [...records, ...serverRecords];
+                const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+
+                // Sort Desc
+                unique.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                records = unique;
+
+                // Update Cache
+                localStorage.setItem('wfc_checkins_cache', JSON.stringify(records.slice(0, 500)));
+            }
+        } catch (e) {
+            console.warn("Could not fetch remote checkins, showing local only", e);
+        }
+
+        // Filter by Date if requested
+        if (dateFilterStr) {
+            const dateStr = new Date(dateFilterStr).toISOString().split('T')[0]; // YYYY-MM-DD
+            return records.filter(r => r.timestamp.startsWith(dateStr));
+        }
+
+        return records;
     }
 };
 

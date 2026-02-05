@@ -262,12 +262,37 @@
                 <p style="margin-top:2rem; font-size:0.9rem; color:var(--text-muted);">Visit logged at 10:42 AM</p>
             </div>
             <div id="recentLog" style="margin-top:3rem; text-align:left; display:none;">
-                <h3 style="color:var(--text-muted); border-bottom:1px solid var(--glass-border); padding-bottom:10px;">
-                    Recent Check-Ins</h3>
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--glass-border); padding-bottom:10px; margin-bottom:1rem;">
+                    <h3 style="color:var(--text-muted); margin:0;">Recent Check-Ins</h3>
+                    <button onclick="CheckInController.openTodayModal()" class="cta-button"
+                        style="padding:5px 15px; font-size:0.8rem; background:rgba(255,255,255,0.1);">
+                        View Full List
+                    </button>
+                </div>
                 <div id="recentList" style="margin-top:1rem; color:white;"></div>
             </div>
         </div>
     </main>
+
+    <!-- Modal: Who Checked In -->
+    <div id="checkin-modal" class="modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content"
+            style="background:#1a1a1a; padding:2rem; border-radius:15px; width:90%; max-width:600px; max-height:80vh; overflow-y:auto; border:1px solid var(--glass-border); position:relative; animation: slideUp 0.3s ease;">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="color:white; margin:0;">Checked In Today</h2>
+                <button onclick="CheckInController.closeModal()"
+                    style="background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <div id="checkin-list" style="display:flex; flex-direction:column; gap:10px;">
+                <!-- Items will be injected here -->
+                <div style="text-align:center; color:var(--text-muted);">Loading...</div>
+            </div>
+        </div>
+    </div>
 
     <!-- Dependencies -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>

@@ -146,6 +146,12 @@ const Store = {
         }
 
         // 2. Dual-Strategy Sync: Race Network vs Time
+        if (!window.db) {
+            console.error("DB Object missing in Store via window.db");
+            throw new Error("Database connection not initialized");
+        }
+
+        console.log("Attempting Firebase Add...");
         const serverPromise = db.collection('members').add(newMember);
 
         // Timeout Promise: If server takes > 2500ms, we assume "Offline Success" 

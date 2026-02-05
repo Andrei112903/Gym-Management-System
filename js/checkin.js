@@ -50,8 +50,9 @@ const CheckInController = {
             const today = new Date().toISOString().split('T')[0];
             const isExpired = member.expiryDate < today;
 
+            // Re-render status with member ID context for button
             if (isExpired) {
-                this.showStatus('expired', 'Membership Expired', `${member.name}<br>${member.package} expired on ${member.expiryDate}`);
+                this.showStatus('expired', 'Membership Expired', `${member.name}<br>${member.package} expired on ${member.expiryDate}`, member.id);
                 // Optional: Play Error Sound
             } else {
                 this.showStatus('valid', 'Access Granted', `${member.name}<br>${member.package} valid until ${member.expiryDate}`);
@@ -66,7 +67,7 @@ const CheckInController = {
         }
     },
 
-    showStatus: function (type, title, message) {
+    showStatus: function (type, title, message, memberId = null) {
         const div = document.getElementById('statusResult');
         div.className = 'status-display'; // Reset classes
         div.innerHTML = ''; // Clear
@@ -95,6 +96,17 @@ const CheckInController = {
                 ${new Date().toLocaleTimeString()}
             </p>
         `;
+
+        // ADDED: Quick Renew Button
+        if (type === 'expired' && memberId) {
+            div.innerHTML += `
+                <div style="margin-top:20px;">
+                    <a href="members.html?action=renew&id=${memberId}" class="cta-button" style="text-decoration:none; background:white; color:red; border:none; padding:10px 20px; font-weight:bold; border-radius:30px;">
+                        Renew Membership
+                    </a>
+                </div>
+            `;
+        }
 
         div.style.display = 'block';
     },

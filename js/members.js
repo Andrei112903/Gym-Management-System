@@ -15,6 +15,13 @@ const MemberController = {
             await this.renderTable();
             await this.populatePackages();
             this.bindSearch(); // Ensure search is bound
+            this.bindEvents(); // Bind form events
+
+            // Check for URL Params (Deep Linking)
+            await this.handleUrlParams();
+
+            // Check auth state for debugging
+            console.log("Current User:", window.AuthService ? AuthService.getCurrentUser() : "AuthService missing");
         } catch (e) {
             console.error('MemberController Init Error:', e);
             alert("Error loading members: " + e.message);
@@ -320,8 +327,10 @@ const MemberController = {
             if (!selectedPackage) {
                 // Fallback: Try to parse from select option text if DB fetch failed/mismatched? 
                 // For now, simple error.
-                throw new Error("Invalid Package Selected. Please refresh.");
+                throw new Error("Invalid Package Selected. Please refresh page and try again.");
             }
+
+            console.log("Selected Package:", selectedPackage);
 
             if (btn) btn.textContent = "Saving...";
 
@@ -340,7 +349,8 @@ const MemberController = {
 
             // 3. Add to DB
             console.log("Sending to DB:", newMember);
-            await withTimeout(Store.addMember(newMember), 15000);
+            const result = await withTimeout(Store.addMember(newMember), 15000);
+            console.log("Add Member Result:", result);
 
             alert(`Success! Member registered.`);
 
@@ -352,6 +362,35 @@ const MemberController = {
             alert('Registration Failed: ' + e.message);
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = "Confirm Registration"; }
+        }
+    },
+
+    handleUrlParams: async function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const id = urlParams.get('id');
+
+        if (action === 'renew' && id) {
+            console.log("Auto-opening renewal for:", id);
+            // Wait a tick for table render? Already awaited in init.
+            // But we need to make sure the modal opens.
+
+            // Open View
+            await this.viewMember(id);
+
+            // Switch to Edit
+            if (this.currentMemberId === id) { // verify it opened
+                this.enableEditMode();
+
+                // Optional: Scroll edit date into view or focus?
+                setTimeout(() => {
+                    const dateInput = document.getElementById('edit-expiry');
+                    if (dateInput) dateInput.focus();
+                }, 500);
+            }
+
+            // Clean URL so refresh doesn't keep opening it
+            window.history.replaceState({}, document.title, "members.html");
         }
     }
 };

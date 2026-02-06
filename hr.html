@@ -227,25 +227,49 @@
 
         <!-- Kiosk Mode Overlay -->
         <div id="kiosk-overlay" class="modal-overlay" style="display:none; background: #000; z-index: 9999;">
-            <div style="text-align:center; padding: 2rem;">
-                <h1 style="color:var(--gold); margin-bottom: 0.5rem;">Attendance Kiosk</h1>
-                <p style="color:var(--text-muted); margin-bottom: 2.5rem;">Staff: Scan to Clock In/Out</p>
-                <div id="kiosk-qr-container"
-                    style="background:#fff; padding:20px; border-radius:15px; display:inline-block; margin-bottom:2rem;">
+            <div style="text-align:center; padding: 2rem; width: 100%; max-width: 900px;">
+                <h1 style="color:var(--gold); margin-bottom: 2.5rem;">Winners Fit Facility Access</h1>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 3rem;">
+                    <!-- Left: Attendance QR -->
+                    <div class="glass-card" style="padding: 2.5rem; border-color: rgba(0,255,136,0.2);">
+                        <h3 style="color:#00ff88; margin-bottom: 1rem;">1. ATTENDANCE MODE</h3>
+                        <p
+                            style="color:var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; min-height: 40px;">
+                            Scan to Clock In or Out for your shift.</p>
+                        <div id="kiosk-qr-attendance"
+                            style="background:#fff; padding:15px; border-radius:15px; display:inline-block; margin-bottom:1.5rem;">
+                        </div>
+                        <div id="kiosk-timer"
+                            style="color:#00ff88; font-weight:bold; font-size:1rem; background:rgba(0,255,136,0.1); padding:8px; border-radius:8px;">
+                            Code rotates in: 20s</div>
+                    </div>
+
+                    <!-- Right: Portal QR -->
+                    <div class="glass-card" style="padding: 2.5rem; border-color: rgba(255,184,0,0.2);">
+                        <h3 style="color:var(--gold); margin-bottom: 1rem;">2. PORTAL MODE</h3>
+                        <p
+                            style="color:var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; min-height: 40px;">
+                            Scan to view History, Profile, or Login.</p>
+                        <div id="kiosk-qr-portal"
+                            style="background:#fff; padding:15px; border-radius:15px; display:inline-block; margin-bottom:1.5rem;">
+                        </div>
+                        <div
+                            style="color:var(--gold); font-weight:bold; font-size:1rem; background:rgba(255,184,0,0.1); padding:8px; border-radius:8px;">
+                            Static App Link</div>
+                    </div>
                 </div>
-                <div id="kiosk-timer"
-                    style="color:var(--gold); font-weight:bold; font-size:1.2rem; margin-bottom: 2rem;">Code rotates in:
-                    20s</div>
+
                 <button class="cta-button" onclick="HRController.closeKiosk()"
-                    style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);">Exit
-                    Kiosk Mode</button>
+                    style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); font-size: 0.9rem;">Close
+                    Kiosk Display</button>
             </div>
         </div>
 
         <!-- Add Staff Modal -->
         <div id="add-staff-modal" class="modal-overlay" style="display:none;">
             <div class="glass-card modal-content" style="max-width: 500px; width: 90%;">
-                <h2 style="margin-bottom: 1.5rem;">Register New Staff</h2>
+                <h2 id="modal-title" style="margin-bottom: 1.5rem;">Register New Staff</h2>
                 <form id="add-staff-form" onsubmit="HRController.saveStaff(event)">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:1rem;">
                         <div class="input-group">

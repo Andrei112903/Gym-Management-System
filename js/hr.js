@@ -7,7 +7,8 @@ const HRController = {
     state: {
         staff: [],
         attendanceLogs: [],
-        view: 'list'
+        view: 'list',
+        editingStaffId: null
     },
 
     init: function () {
@@ -17,7 +18,10 @@ const HRController = {
 
     loadData: async function () {
         try {
-            const staffSnapshot = await db.collection('users').where('role', '==', 'staff').get();
+            const staffSnapshot = await db.collection('users')
+                .where('role', '==', 'staff')
+                .where('status', '==', 'active')
+                .get();
             this.state.staff = staffSnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -106,8 +110,8 @@ const HRController = {
                                         </span>
                                     </td>
                                     <td style="text-align:right;">
-                                        <button class="cta-button" style="padding:5px 10px; font-size:0.7rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border);">Edit</button>
-                                        <button class="cta-button" style="padding:5px 10px; font-size:0.7rem; background:rgba(229,9,20,0.1); border:1px solid red; color:red; margin-left:5px;">Delete</button>
+                                        <button class="cta-button" onclick="HRController.editStaff('${s.id}')" style="padding:5px 10px; font-size:0.7rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border);">Edit</button>
+                                        <button class="cta-button" onclick="HRController.deleteStaff('${s.id}', '${s.firstName}')" style="padding:5px 10px; font-size:0.7rem; background:rgba(229,9,20,0.1); border:1px solid red; color:red; margin-left:5px;">Delete</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -152,20 +156,39 @@ const HRController = {
     },
 
     generateQR: function (token) {
-        const container = document.getElementById('kiosk-qr-container');
-        container.innerHTML = '';
         const pathParts = window.location.pathname.split('/');
-        pathParts[pathParts.length - 1] = 'attendance.html';
-        const finalUrl = window.location.origin + pathParts.join('/') + '?token=' + token;
+        const dir = pathParts.slice(0, -1).join('/');
+        const origin = window.location.origin;
 
-        this.qrInstance = new QRCode(container, {
-            text: finalUrl,
-            width: 256,
-            height: 256,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
+        // 1. Attendance QR (attendance.html)
+        const attendanceUrl = origin + dir + '/attendance.html?token=' + token;
+        const containerAtt = document.getElementById('kiosk-qr-attendance');
+        if (containerAtt) {
+            containerAtt.innerHTML = '';
+            new QRCode(containerAtt, {
+                text: attendanceUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        // 2. Portal/Profile QR (profile.html)
+        const portalUrl = origin + dir + '/profile.html';
+        const containerPort = document.getElementById('kiosk-qr-portal');
+        if (containerPort) {
+            containerPort.innerHTML = '';
+            new QRCode(containerPort, {
+                text: portalUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
     },
 
     startTimer: function (seconds) {
@@ -187,8 +210,13 @@ const HRController = {
     closeAddForm: function () {
         document.getElementById('add-staff-modal').style.display = 'none';
         document.getElementById('add-staff-form').reset();
+        document.getElementById('modal-title').textContent = 'Register New Staff';
         document.getElementById('gen-username').textContent = '---';
         document.getElementById('gen-pin').textContent = '---';
+
+        // Reset form submission to default (Save)
+        document.getElementById('add-staff-form').onsubmit = (e) => this.saveStaff(e);
+        this.state.editingStaffId = null;
     },
 
     onNameChange: function () {
@@ -227,6 +255,8 @@ const HRController = {
             pin: initialPassword,
             role: 'staff',
             status: 'active',
+            lastAction: 'None',
+            lastActionDate: '',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -258,6 +288,72 @@ const HRController = {
             masked.style.display = 'inline'; real.style.display = 'none'; el.textContent = '👁️';
         } else {
             masked.style.display = 'none'; real.style.display = 'inline'; el.textContent = '🙈';
+        }
+    },
+
+    editStaff: function (id) {
+        const staff = this.state.staff.find(s => s.id === id);
+        if (!staff) return;
+
+        this.state.editingStaffId = id;
+        document.getElementById('add-staff-modal').style.display = 'flex';
+        document.getElementById('modal-title').textContent = 'Edit Staff Member';
+
+        // Fill form
+        document.getElementById('staff-firstname').value = staff.firstName;
+        document.getElementById('staff-lastname').value = staff.lastName;
+        document.getElementById('staff-email').value = staff.email;
+        document.getElementById('staff-phone').value = staff.phone || '';
+        document.getElementById('staff-address').value = staff.address || '';
+        document.getElementById('gen-username').textContent = staff.username;
+        document.getElementById('gen-pin').textContent = staff.pin || '---';
+
+        // Swap submit handler temporarily
+        const form = document.getElementById('add-staff-form');
+        form.onsubmit = (e) => this.updateStaff(e);
+    },
+
+    updateStaff: async function (e) {
+        e.preventDefault();
+        const id = this.state.editingStaffId;
+        const btn = e.target.querySelector('button[type="submit"]');
+
+        const updates = {
+            firstName: document.getElementById('staff-firstname').value.trim(),
+            lastName: document.getElementById('staff-lastname').value.trim(),
+            email: document.getElementById('staff-email').value.trim(),
+            phone: document.getElementById('staff-phone').value.trim(),
+            address: document.getElementById('staff-address').value.trim()
+        };
+
+        btn.innerHTML = 'Updating...';
+        btn.disabled = true;
+
+        try {
+            await db.collection('users').doc(id).update(updates);
+            alert("Staff profile updated!");
+            this.closeAddForm();
+            this.loadData();
+        } catch (err) {
+            alert("Update failed: " + err.message);
+        } finally {
+            btn.innerHTML = 'Save Changes';
+            btn.disabled = false;
+        }
+    },
+
+    deleteStaff: async function (id, name) {
+        if (!confirm(`Are you sure you want to deactivate ${name}? This will hide them from the directory but keep their attendance logs.`)) return;
+
+        try {
+            await db.collection('users').doc(id).update({
+                status: 'inactive',
+                deactivatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert(`${name} has been deactivated.`);
+            this.loadData();
+        } catch (err) {
+            alert("Deletion failed: " + err.message);
         }
     }
 };

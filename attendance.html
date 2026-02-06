@@ -169,71 +169,9 @@
         </div>
     </div>
 
-    <!-- PWA Hub -->
-    <div id="pwa-hub" class="auth-container" style="display:none;">
-        <div class="status-card animate-in">
-            <div
-                style="background:rgba(255,255,255,0.05); padding:4px 12px; border-radius:20px; font-size:0.6rem; color:var(--gold); display:inline-block; margin-bottom:1rem; border:1px solid rgba(255,184,0,0.2);">
-                PROFILE MODE</div>
-            <h2 id="hub-welcome">Hello!</h2>
-            <p>Ready to clock in/out?</p>
 
-            <div id="hub-actions">
-                <button class="cta-button" onclick="AttendanceClient.startScanner()"
-                    style="margin-top:2rem; width:100%;">
-                    SCAN KIOSK QR
-                </button>
-                <button class="cta-button" onclick="AttendanceClient.showAccount()"
-                    style="margin-top:1rem; width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-main);">
-                    HISTORY & PROFILE
-                </button>
-                <button class="cta-button" onclick="AttendanceClient.logout()"
-                    style="margin-top:1.5rem; width:100%; background:transparent; border:none; color:rgba(255,255,255,0.3); font-size:0.75rem; text-decoration:underline;">
-                    Logout
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Scanner View -->
-    <div id="scanner-view" class="auth-container" style="display:none;">
-        <div class="status-card animate-in">
-            <h2 style="color:var(--gold);">Scanner</h2>
-            <p>Center the Kiosk QR code in the box</p>
-            <div id="reader"></div>
-            <button class="cta-button" onclick="AttendanceClient.stopScanner()"
-                style="background:transparent; border:1px solid #ff4444; color:#ff4444; width:100%; margin-top:20px;">
-                Cancel
-            </button>
-        </div>
-    </div>
 
-    <!-- Account View -->
-    <div id="account-view" class="auth-container" style="display:none;">
-        <div class="status-card animate-in" style="padding-top:3.5rem;">
-            <button onclick="AttendanceClient.showPwaHub()"
-                style="position:absolute; top:20px; left:20px; background:none; border:none; color:var(--text-muted); cursor:pointer;">✕
-                Back</button>
-
-            <div id="acc-avatar" class="avatar">?</div>
-            <h2 id="acc-name" style="font-size:1.5rem; margin-bottom:0.2rem;">---</h2>
-            <p id="acc-username" style="font-size:0.85rem; margin-bottom:2rem; color:var(--gold);">@username</p>
-
-            <div
-                style="text-align:left; background:rgba(255,255,255,0.02); padding:1.2rem; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
-                <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;">CURRENT
-                    STATUS</span>
-                <strong id="acc-status" style="font-size:1.1rem;">---</strong>
-            </div>
-
-            <h3
-                style="text-align:left; margin-top:2rem; font-size:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-                Recent Activity</h3>
-            <div id="acc-history" class="history-container">
-                <p style="padding:2rem; opacity:0.3;">Loading history...</p>
-            </div>
-        </div>
-    </div>
 
     <!-- Success View -->
     <div id="success-view" class="auth-container" style="display:none;">
@@ -245,8 +183,8 @@
             </div>
             <h2 id="success-title">Success</h2>
             <p id="success-msg">Clocking recorded.</p>
-            <button class="cta-button" onclick="AttendanceClient.showPwaHub()" style="margin-top:2rem; width:100%;">Back
-                Home</button>
+            <button class="cta-button" onclick="AttendanceClient.redirectToPortal()"
+                style="margin-top:2rem; width:100%;">Go to Staff Portal</button>
         </div>
     </div>
 
@@ -261,8 +199,8 @@
             </div>
             <h2 id="error-title">Error</h2>
             <p id="error-msg">Something went wrong.</p>
-            <button class="cta-button" onclick="AttendanceClient.showPwaHub()" style="margin-top:2rem; width:100%;">Try
-                Again</button>
+            <button class="cta-button" onclick="AttendanceClient.redirectToPortal()"
+                style="margin-top:2rem; width:100%;">Back to Portal</button>
         </div>
     </div>
 
@@ -288,9 +226,9 @@
                 <span id="decision-action-text">Complete Clock In/Out</span>
             </button>
 
-            <button class="cta-button" onclick="AttendanceClient.showPwaHub()"
+            <button class="cta-button" onclick="AttendanceClient.redirectToPortal()"
                 style="width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-muted);">
-                Just Go to Profile Mode
+                Just Go to Staff Portal
             </button>
         </div>
     </div>

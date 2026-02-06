@@ -361,7 +361,30 @@
                     </div>
                 </div>
 
-                <!-- Recent Attendance Table -->
+                <!-- Recent Member Attendance Table -->
+                <div class="glass-card" style="padding:1.5rem; margin-top:1.5rem;">
+                    <h3 style="margin-bottom:1rem;">Recent Member Attendance</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Member Name</th>
+                                    <th>Action</th>
+                                    <th>Time</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentMemberAttendanceBody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">Loading
+                                        logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Staff Attendance Table -->
                 <div class="glass-card" style="padding:1.5rem; margin-top:1.5rem;">
                     <h3 style="margin-bottom:1rem;">Recent Staff Attendance</h3>
                     <div class="table-container">
@@ -374,7 +397,7 @@
                                     <th>Date</th>
                                 </tr>
                             </thead>
-                            <tbody id="recentAttendanceBody">
+                            <tbody id="recentStaffAttendanceBody">
                                 <tr>
                                     <td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">Loading
                                         logs...</td>
@@ -627,12 +650,11 @@
         });
 
         async function loadDashboardData() {
-            const tableBody = document.getElementById('recentAttendanceBody');
+            const memberTableBody = document.getElementById('recentMemberAttendanceBody');
+            const staffTableBody = document.getElementById('recentStaffAttendanceBody');
             const totalMembersEl = document.querySelector('.stat-card:nth-child(1) .stat-value');
             const checkinsTodayEl = document.querySelector('.stat-card:nth-child(2) .stat-value');
             const revenueTodayEl = document.querySelector('.stat-card:nth-child(3) .stat-value');
-
-            if (!tableBody) return;
 
             try {
                 // 1. Fetch Stats
@@ -658,40 +680,75 @@
                 });
                 if (revenueTodayEl) revenueTodayEl.textContent = '₱' + dailyRev.toLocaleString();
 
-                // 2. Fetch Logs
+                // 2. Fetch Logs (Fetch more to allow client-side filtering)
                 const snapshot = await db.collection('attendance_logs')
                     .orderBy('timestamp', 'desc')
-                    .limit(10)
+                    .limit(30)
                     .get();
 
                 if (snapshot.empty) {
-                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">No recent attendance logs.</td></tr>';
+                    if (memberTableBody) memberTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">No recent attendance logs.</td></tr>';
+                    if (staffTableBody) staffTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; opacity:0.5;">No recent attendance logs.</td></tr>';
                     return;
                 }
 
-                tableBody.innerHTML = snapshot.docs.map(doc => {
-                    const log = doc.data();
-                    const actionClass = log.action === 'Clock In' ? 'status-active' : 'status-expired';
-                    const typeLabel = log.type === 'member' ? 'MEMBER' : 'STAFF';
-                    const typeClass = log.type === 'member' ? 'background:rgba(0,180,255,0.1); color:#00b4ff;' : 'background:rgba(255,215,0,0.1); color:var(--gold);';
-                    const name = log.staffName || log.memberName || 'Unknown';
+                const allLogs = snapshot.docs.map(doc => doc.data());
 
-                    return `
-                        <tr>
-                            <td>
-                                <strong>${name}</strong>
-                                <span style="display:inline-block; font-size:0.6rem; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:700; ${typeClass}">${typeLabel}</span>
-                            </td>
-                            <td><span class="status-badge ${actionClass}">${log.action}</span></td>
-                            <td>${log.time}</td>
-                            <td style="color:var(--text-muted);">${log.date}</td>
-                        </tr>
-                    `;
-                }).join('');
+                const memberLogs = allLogs.filter(log => log.type === 'member');
+                const staffLogs = allLogs.filter(log => log.type !== 'member');
+
+                // Render Member Table
+                if (memberTableBody) {
+                    if (memberLogs.length === 0) {
+                        memberTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; opacity:0.5;">No members checked in recently.</td></tr>';
+                    } else {
+                        memberTableBody.innerHTML = memberLogs.slice(0, 10).map(log => {
+                            const actionClass = log.action === 'Clock In' || log.action === 'Check In' ? 'status-active' : 'status-expired';
+                            // Normalize Action Text
+                            let actionText = log.action;
+                            if (log.action === 'Clock In') actionText = 'In';
+                            if (log.action === 'Clock Out') actionText = 'Out';
+
+                            return `
+                                <tr>
+                                    <td>
+                                        <strong>${log.memberName || 'Unknown'}</strong>
+                                    </td>
+                                    <td><span class="status-badge ${actionClass}">${actionText}</span></td>
+                                    <td>${log.time}</td>
+                                    <td style="color:var(--text-muted);">${log.date}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // Render Staff Table
+                if (staffTableBody) {
+                    if (staffLogs.length === 0) {
+                        staffTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; opacity:0.5;">No staff active recently.</td></tr>';
+                    } else {
+                        staffTableBody.innerHTML = staffLogs.slice(0, 10).map(log => {
+                            const actionClass = log.action === 'Clock In' ? 'status-active' : 'status-expired';
+                            return `
+                                <tr>
+                                    <td>
+                                        <strong>${log.staffName || 'Unknown'}</strong>
+                                    </td>
+                                    <td><span class="status-badge ${actionClass}">${log.action}</span></td>
+                                    <td>${log.time}</td>
+                                    <td style="color:var(--text-muted);">${log.date}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
 
             } catch (err) {
                 console.error("Dashboard Load Error:", err);
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:red;">Failed to load logs.</td></tr>';
+                const errorHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:red;">Failed to load logs.</td></tr>';
+                if (memberTableBody) memberTableBody.innerHTML = errorHTML;
+                if (staffTableBody) staffTableBody.innerHTML = errorHTML;
             }
         }
 

@@ -164,9 +164,12 @@ const Store = {
             if (result === 'TIMEOUT') {
                 console.warn("Network slow - assuming Offline Persistence saved it.");
                 // We let the background process handle the actual sync
-                // Do NOT throw error, just proceed.
+                // Do NOT throw error, just proceed with local ID.
             } else {
                 console.log("Synced to Firebase instantly with ID:", result.id);
+                // CRITICAL FIX: Update the return object to use the REAL Server ID
+                // The Email and other UI parts need this Real ID, not the 'loc_' ID.
+                newMember.id = result.id;
             }
         } catch (err) {
             console.error("Firebase Sync Failed:", err);

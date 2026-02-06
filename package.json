@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "description": "Premium Fitness PWA",
     "scripts": {
-        "dev": "serve -p 8080"
+        "dev": "serve -p 8080",
+        "deploy": "firebase deploy"
     },
     "dependencies": {
         "firebase": "^12.8.0"

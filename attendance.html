@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance - Winners Fit</title>
+    <title>Attendance Hub - Winners Fit</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -34,6 +34,7 @@
             border-radius: 24px;
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
         }
 
         .icon-circle {
@@ -57,47 +58,6 @@
             color: var(--gold);
         }
 
-        h2 {
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-        }
-
-        p {
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
-
-        #reader {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-
-        #reader__dashboard_section_csr button {
-            background: var(--gold) !important;
-            color: black !important;
-            padding: 10px !important;
-            border-radius: 8px !important;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-in {
-            animation: fadeIn 0.5s ease forwards;
-        }
-
-        /* Account & History Styles */
         .avatar {
             width: 70px;
             height: 70px;
@@ -123,11 +83,6 @@
             text-align: left;
         }
 
-        .log-action {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
         .action-in {
             color: #00ff88;
         }
@@ -137,54 +92,91 @@
         }
 
         .history-container {
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
             margin-top: 1rem;
             padding-right: 5px;
         }
 
-        ::-webkit-scrollbar {
-            width: 4px;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        .animate-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .styled-input {
+            width: 100%;
+        }
+
+        #reader {
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 1rem;
         }
     </style>
-
-    <script>
-        // Force refresh
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(regs => {
-                regs.forEach(r => r.unregister());
-            });
-        }
-    </script>
 </head>
 
 <body class="attendance-page">
 
+    <!-- Loading View -->
     <div id="loading" class="auth-container">
         <div class="status-card">
-            <h3 id="loading-text">Verifying...</h3>
-            <p id="debug-status" style="font-size:0.7rem; color:rgba(255,255,255,0.3); margin-top:10px;">Checking device
-                identity</p>
+            <h3>Verifying...</h3>
+            <p style="font-size:0.7rem; opacity:0.5; margin-top:10px;">Checking authentication</p>
         </div>
     </div>
 
-    <!-- PWA Hub (Shown when opened without a direct scan) -->
+    <!-- Login View -->
+    <div id="login-view" class="auth-container" style="display:none;">
+        <div class="status-card animate-in">
+            <h2 id="login-title" style="color:var(--gold); margin-bottom:0.5rem;">Staff Sign In</h2>
+            <p id="login-welcome" style="font-size:0.85rem; margin-bottom:2rem;">Enter your numeric ID (122...) and
+                password.</p>
+
+            <form onsubmit="AttendanceClient.handleLogin(event)">
+                <div id="username-group" class="input-group">
+                    <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Staff
+                        ID (122...)</label>
+                    <input type="text" id="login-user" class="styled-input" placeholder="e.g. 122456789">
+                </div>
+                <div class="input-group" style="margin-bottom:2rem;">
+                    <label
+                        style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Password</label>
+                    <input type="password" id="login-pass" class="styled-input" placeholder="Enter password">
+                </div>
+                <button type="submit" class="cta-button" style="width:100%;">Sign In & Record</button>
+
+                <button type="button" id="switch-acc-btn" onclick="AttendanceClient.clearRememberedUser()"
+                    style="display:none; margin-top:1.5rem; background:transparent; border:none; color:rgba(255,255,255,0.3); font-size:0.75rem; text-decoration:underline; width:100%;">
+                    Not you? Switch Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PWA Hub -->
     <div id="pwa-hub" class="auth-container" style="display:none;">
         <div class="status-card animate-in">
+            <div
+                style="background:rgba(255,255,255,0.05); padding:4px 12px; border-radius:20px; font-size:0.6rem; color:var(--gold); display:inline-block; margin-bottom:1rem; border:1px solid rgba(255,184,0,0.2);">
+                PROFILE MODE</div>
             <h2 id="hub-welcome">Hello!</h2>
-            <p>Ready to clock in?</p>
-
-            <div id="scanner-view" style="display:none; margin-top:1.5rem;">
-                <div id="reader"></div>
-                <button class="cta-button" onclick="AttendanceClient.stopScanner()"
-                    style="background:transparent; border:1px solid red; color:red; width:100%; margin-top: 10px;">Cancel
-                    Scan</button>
-            </div>
+            <p>Ready to clock in/out?</p>
 
             <div id="hub-actions">
                 <button class="cta-button" onclick="AttendanceClient.startScanner()"
@@ -193,130 +185,57 @@
                 </button>
                 <button class="cta-button" onclick="AttendanceClient.showAccount()"
                     style="margin-top:1rem; width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-main);">
-                    MY ACCOUNT & HISTORY
+                    HISTORY & PROFILE
                 </button>
-                <button class="cta-button" onclick="AttendanceClient.showRelinkModal()"
-                    style="margin-top:1.5rem; width:100%; background:transparent; border:none; color:rgba(255,255,255,0.3); font-size:0.7rem; text-decoration:underline;">
-                    Device identity lost? Repair link
+                <button class="cta-button" onclick="AttendanceClient.logout()"
+                    style="margin-top:1.5rem; width:100%; background:transparent; border:none; color:rgba(255,255,255,0.3); font-size:0.75rem; text-decoration:underline;">
+                    Logout
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- PWA Account View (Internal) -->
-    <div id="account-view" class="auth-container" style="display:none;">
+    <!-- Scanner View -->
+    <div id="scanner-view" class="auth-container" style="display:none;">
         <div class="status-card animate-in">
-            <button onclick="AttendanceClient.showHub()"
-                style="position:absolute; top:20px; left:20px; background:none; border:none; color:var(--text-muted); cursor:pointer;">
-                ✕ Close
+            <h2 style="color:var(--gold);">Scanner</h2>
+            <p>Center the Kiosk QR code in the box</p>
+            <div id="reader"></div>
+            <button class="cta-button" onclick="AttendanceClient.stopScanner()"
+                style="background:transparent; border:1px solid #ff4444; color:#ff4444; width:100%; margin-top:20px;">
+                Cancel
             </button>
+        </div>
+    </div>
+
+    <!-- Account View -->
+    <div id="account-view" class="auth-container" style="display:none;">
+        <div class="status-card animate-in" style="padding-top:3.5rem;">
+            <button onclick="AttendanceClient.showPwaHub()"
+                style="position:absolute; top:20px; left:20px; background:none; border:none; color:var(--text-muted); cursor:pointer;">✕
+                Back</button>
 
             <div id="acc-avatar" class="avatar">?</div>
-            <h2 id="acc-name" style="font-size:1.5rem; margin-bottom:0;">---</h2>
-            <p id="acc-username" style="font-size:0.8rem; margin-bottom:1.5rem;">@username</p>
+            <h2 id="acc-name" style="font-size:1.5rem; margin-bottom:0.2rem;">---</h2>
+            <p id="acc-username" style="font-size:0.85rem; margin-bottom:2rem; color:var(--gold);">@username</p>
 
             <div
-                style="text-align:left; background:rgba(255,255,255,0.02); padding:1rem; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
-                <div style="margin-bottom:0.5rem;">
-                    <span style="font-size:0.7rem; color:var(--text-muted); display:block;">STATUS</span>
-                    <strong id="acc-status" style="color:#00ff88;">Active</strong>
-                </div>
-                <div>
-                    <span style="font-size:0.7rem; color:var(--text-muted); display:block;">CONTACT</span>
-                    <strong id="acc-phone" style="font-size:0.9rem;">-</strong>
-                </div>
+                style="text-align:left; background:rgba(255,255,255,0.02); padding:1.2rem; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;">CURRENT
+                    STATUS</span>
+                <strong id="acc-status" style="font-size:1.1rem;">---</strong>
             </div>
 
             <h3
-                style="text-align:left; margin-top:2rem; font-size:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
-                History</h3>
+                style="text-align:left; margin-top:2rem; font-size:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                Recent Activity</h3>
             <div id="acc-history" class="history-container">
-                <p style="padding:2rem; opacity:0.3;">Loading logs...</p>
-            </div>
-
-            <!-- Emergency Reset -->
-            <button onclick="AttendanceClient.resetStatus()"
-                style="margin-top:1.5rem; background:none; border:none; color:rgba(255,255,255,0.2); font-size:0.7rem; cursor:pointer; text-decoration:underline;">
-                Stuck on wrong status? Reset local status
-            </button>
-        </div>
-    </div>
-    </div>
-
-    <!-- Re-Link Modal -->
-    <div id="relink-modal" class="modal-overlay"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; align-items:center; justify-content:center; padding:20px;">
-        <div class="glass-card" style="width:100%; max-width:400px; padding:2rem;">
-            <h2 style="color:var(--gold); margin-bottom:1rem;">Repair Link</h2>
-            <p style="font-size:0.85rem; margin-bottom:1.5rem;">If you cleared your browser data, enter your credentials
-                to reconnect this phone.</p>
-
-            <div class="input-group" style="margin-bottom:1rem; text-align:left;">
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Username or
-                    Email</label>
-                <input type="text" id="relink-user" class="styled-input" style="width:100%;"
-                    placeholder="Enter username or email">
-            </div>
-            <div class="input-group" style="margin-bottom:2rem; text-align:left;">
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Account
-                    Password</label>
-                <input type="password" id="relink-pin" class="styled-input" style="width:100%;"
-                    placeholder="Enter your password">
-            </div>
-
-            <div style="display:flex; gap:10px;">
-                <button class="cta-button" onclick="document.getElementById('relink-modal').style.display='none'"
-                    style="background:transparent; border:1px solid var(--glass-border); flex:1;">Cancel</button>
-                <button class="cta-button" onclick="AttendanceClient.submitRelink()" style="flex:1;">Link Phone</button>
+                <p style="padding:2rem; opacity:0.3;">Loading history...</p>
             </div>
         </div>
     </div>
 
-    <!-- Edit Profile Modal -->
-    <div id="edit-profile-modal" class="modal-overlay"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; align-items:center; justify-content:center; padding:20px;">
-        <div class="glass-card" style="width:100%; max-width:400px; padding:2rem;">
-            <h2 style="color:var(--gold); margin-bottom:1rem;">Edit Profile</h2>
-
-            <div class="input-group" style="margin-bottom:1rem; text-align:left;">
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Full
-                    Name</label>
-                <input type="text" id="edit-name" class="styled-input" style="width:100%;">
-            </div>
-
-            <div class="input-group" style="margin-bottom:2rem; text-align:left;">
-                <label
-                    style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Username</label>
-                <input type="text" id="edit-username" class="styled-input" style="width:100%;">
-            </div>
-
-            <div style="display:flex; gap:10px;">
-                <button class="cta-button" onclick="document.getElementById('edit-profile-modal').style.display='none'"
-                    style="background:transparent; border:1px solid var(--glass-border); flex:1;">Cancel</button>
-                <button class="cta-button" onclick="AttendanceClient.saveProfile()" style="flex:1;">Save
-                    Changes</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="error-view" class="auth-container" style="display:none;">
-        <div class="status-card animate-in">
-            <div class="icon-circle icon-error">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </div>
-            <h2 id="error-title">Access Denied</h2>
-            <p id="error-msg">Invalid registration token.</p>
-            <button class="cta-button" onclick="AttendanceClient.showRelinkModal()"
-                style="margin-top:2rem; width:100%;">Repair Device Link</button>
-            <button class="cta-button" onclick="window.location.reload()"
-                style="margin-top:1rem; width:100%; background:transparent; border:1px solid var(--glass-border);">Try
-                Again</button>
-        </div>
-    </div>
-
+    <!-- Success View -->
     <div id="success-view" class="auth-container" style="display:none;">
         <div class="status-card animate-in">
             <div class="icon-circle icon-success">
@@ -325,19 +244,54 @@
                 </svg>
             </div>
             <h2 id="success-title">Success</h2>
-            <p id="success-msg">Welcome back. Your clock-in was recorded.</p>
+            <p id="success-msg">Clocking recorded.</p>
+            <button class="cta-button" onclick="AttendanceClient.showPwaHub()" style="margin-top:2rem; width:100%;">Back
+                Home</button>
+        </div>
+    </div>
 
-            <div style="display:flex; flex-direction:column; gap:10px; margin-top:2rem;">
-                <button class="cta-button" onclick="window.location.reload()" style="width:100%;">
-                    Done
-                </button>
-                <button class="cta-button" onclick="AttendanceClient.showAccount()"
-                    style="width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-muted); font-size:0.8rem;">
-                    View My History
-                </button>
+    <!-- Error View -->
+    <div id="error-view" class="auth-container" style="display:none;">
+        <div class="status-card animate-in">
+            <div class="icon-circle icon-error">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </div>
+            <h2 id="error-title">Error</h2>
+            <p id="error-msg">Something went wrong.</p>
+            <button class="cta-button" onclick="AttendanceClient.showPwaHub()" style="margin-top:2rem; width:100%;">Try
+                Again</button>
+        </div>
+    </div>
+
+    <!-- Decision Hub (Shown after login if they came from a scan) -->
+    <div id="decision-hub" class="auth-container" style="display:none;">
+        <div class="status-card animate-in">
+            <div
+                style="background:rgba(255,184,0,0.1); padding:4px 12px; border-radius:20px; font-size:0.6rem; color:var(--gold); display:inline-block; margin-bottom:1rem; border:1px solid rgba(255,184,0,0.3);">
+                ATTENDANCE MODE</div>
+
+            <h2 style="color:var(--gold); margin-bottom:0.5rem;">Verification Successful</h2>
+            <p style="margin-bottom:1.5rem;">Identity confirmed. Choose your next step:</p>
+
+            <div
+                style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:15px; margin-bottom:1.5rem; text-align:left; border:1px solid rgba(255,255,255,0.05);">
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;">YOUR CURRENT
+                    STATUS:</span>
+                <strong id="decision-current-status" style="font-size:1.1rem; color:#fff;">---</strong>
             </div>
 
-            <p style="font-size:0.8rem; margin-top:2rem; opacity:0.5;">This page will close automatically.</p>
+            <button class="cta-button" onclick="AttendanceClient.confirmAttendanceAction()"
+                style="width:100%; margin-bottom:1rem;">
+                <span id="decision-action-text">Complete Clock In/Out</span>
+            </button>
+
+            <button class="cta-button" onclick="AttendanceClient.showPwaHub()"
+                style="width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-muted);">
+                Just Go to Profile Mode
+            </button>
         </div>
     </div>
 
@@ -346,7 +300,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="js/firebase-init.js"></script>
-    <script src="js/attendance.js?v=6"></script>
+    <script src="js/attendance.js"></script>
 </body>
 
 </html>

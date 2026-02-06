@@ -62,15 +62,6 @@
             margin: 0 auto;
         }
 
-        /* Stats Cards */
-        .stat-card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 1.5rem;
-            border-radius: 16px;
-            transition: var(--transition);
-        }
-
         /* Modal Overlay - Full Screen Dark Backdrop */
         .modal-overlay {
             position: fixed;
@@ -204,7 +195,7 @@
                 <h4 id="userName">Admin</h4>
                 <p id="userRole">Administrator</p>
             </div>
-            <button onclick="event.stopPropagation(); AuthService.logout()"
+            <button onclick="AuthService.logout()"
                 style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; opacity: 0.6;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -229,9 +220,8 @@
         </header>
 
         <div class="content-area" id="hr-app-root">
-            <!-- HRController will inject content here -->
             <div style="text-align:center; padding-top: 5rem;">
-                <p style="color:var(--text-muted);">Initializing Staff Module...</p>
+                <p style="color:var(--text-muted);">Initializing HR Module...</p>
             </div>
         </div>
 
@@ -239,8 +229,7 @@
         <div id="kiosk-overlay" class="modal-overlay" style="display:none; background: #000; z-index: 9999;">
             <div style="text-align:center; padding: 2rem;">
                 <h1 style="color:var(--gold); margin-bottom: 0.5rem;">Attendance Kiosk</h1>
-                <p style="color:var(--text-muted); margin-bottom: 2rem;">Scan with your personal phone to Clock In/Out
-                </p>
+                <p style="color:var(--text-muted); margin-bottom: 2.5rem;">Staff: Scan to Clock In/Out</p>
                 <div id="kiosk-qr-container"
                     style="background:#fff; padding:20px; border-radius:15px; display:inline-block; margin-bottom:2rem;">
                 </div>
@@ -256,9 +245,9 @@
         <!-- Add Staff Modal -->
         <div id="add-staff-modal" class="modal-overlay" style="display:none;">
             <div class="glass-card modal-content" style="max-width: 500px; width: 90%;">
-                <h2 style="margin-bottom: 1.5rem;">Add New Staff</h2>
+                <h2 style="margin-bottom: 1.5rem;">Register New Staff</h2>
                 <form id="add-staff-form" onsubmit="HRController.saveStaff(event)">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:1rem;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:1rem;">
                         <div class="input-group">
                             <label>First Name</label>
                             <input type="text" id="staff-firstname" required placeholder="John"
@@ -276,59 +265,38 @@
                         <input type="email" id="staff-email" required placeholder="john@example.com">
                     </div>
 
-                    <div class="input-group" style="margin-bottom:1rem;">
-                        <label>Contact Number (09...)</label>
-                        <input type="tel" id="staff-phone" required placeholder="09123456789" maxlength="11"
-                            pattern="09[0-9]{9}">
-                    </div>
-
-                    <div class="input-group" style="margin-bottom:1rem;">
-                        <label>Home Address</label>
-                        <input type="text" id="staff-address" placeholder="Bgy. 123, Davao City">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:1rem;">
+                        <div class="input-group">
+                            <label>Contact Number</label>
+                            <input type="tel" id="staff-phone" required placeholder="09123456789" maxlength="11">
+                        </div>
+                        <div class="input-group">
+                            <label>Home Address</label>
+                            <input type="text" id="staff-address" placeholder="Davao City">
+                        </div>
                     </div>
 
                     <div
-                        style="padding:15px; background:rgba(229,9,20,0.1); border-radius:10px; margin-bottom:1.5rem; display:flex; justify-content:space-between;">
+                        style="padding:20px; background:rgba(255,184,0,0.05); border:1px solid rgba(255,184,0,0.1); border-radius:15px; margin-bottom:2rem; display:flex; justify-content:space-between;">
                         <div>
-                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">GENERATED
-                                USERNAME</span>
-                            <strong id="gen-username" style="color:var(--gold);">---</strong>
+                            <span
+                                style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">USERNAME</span>
+                            <strong id="gen-username" style="color:var(--gold); font-size: 1.1rem;">---</strong>
                         </div>
-                        <div>
-                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">INITIAL
+                        <div style="text-align:right;">
+                            <span
+                                style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">INITIAL
                                 PASSWORD</span>
-                            <strong id="gen-pin" style="color:var(--gold);">---</strong>
+                            <strong id="gen-pin" style="color:var(--gold); font-size: 1.1rem;">---</strong>
                         </div>
                     </div>
-                    <p
-                        style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1.5rem; opacity:0.7; text-align:center;">
-                        Staff will use <strong>Username + Initial Password</strong> for device linking.
-                    </p>
 
-                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <div style="display:flex; gap:12px; justify-content:flex-end;">
                         <button type="button" class="cta-button" onclick="HRController.closeAddForm()"
-                            style="background:transparent; border:1px solid var(--glass-border); color:var(--text-main);">Cancel</button>
-                        <button type="submit" class="cta-button">Register Staff</button>
+                            style="background:transparent; border:1px solid var(--glass-border); color:var(--text-muted);">Cancel</button>
+                        <button type="submit" class="cta-button">Confirm & Register</button>
                     </div>
                 </form>
-            </div>
-        </div>
-        <!-- Registration QR Modal -->
-        <div id="register-device-modal" class="modal-overlay" style="display:none;">
-            <div class="glass-card modal-content" style="max-width: 400px; width: 90%; text-align: center;">
-                <h2 style="margin-bottom: 0.5rem;">Register Staff Device</h2>
-                <p style="color:var(--text-muted); margin-bottom: 1.5rem;">Scan this QR with the staff member's personal
-                    phone to bind it to their account.</p>
-
-                <div id="register-qr-container"
-                    style="background:#fff; padding:15px; border-radius:15px; display:inline-block; margin-bottom:1.5rem;">
-                </div>
-
-                <p id="register-staff-name" style="color:var(--gold); font-weight:bold; margin-bottom: 1.5rem;">Staff
-                    Name</p>
-
-                <button class="cta-button" onclick="HRController.closeRegisterModal()"
-                    style="width:100%; background:transparent; border:1px solid var(--glass-border); color:var(--text-main);">Close</button>
             </div>
         </div>
     </main>
@@ -351,15 +319,10 @@
             if (user) {
                 document.getElementById('userName').textContent = user.username || user.email || 'Admin';
                 document.getElementById('userAvatar').textContent = (user.username || user.email || 'A')[0].toUpperCase();
-
                 ProfileModule.init();
             }
-            // Set Date
             const dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', dateOptions);
-
-            // Start HR Logic
-            HRController.init();
         });
     </script>
     <script src="app.js?v=mobile"></script>

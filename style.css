@@ -1,3 +1,70 @@
+/* Main App - Desktop Only Restricton (Excludes Attendance) */
+@media (max-width: 1023px) {
+    body:not(.attendance-page)::before {
+        content: "⚠️ MANAGEMENT PORTAL - DESKTOP ONLY";
+        position: fixed;
+        inset: 0;
+        background: var(--black);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    body:not(.attendance-page)::after {
+        content: "Please use a Laptop or Desktop (14\" - 22\" recommended) for administrative tasks. The Attendance portal is accessible on mobile.";
+        position: fixed;
+        inset: 0;
+        margin-top: 4rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10001;
+        font-size: 0.9rem;
+        max-width: 300px;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+    }
+
+    body:not(.attendance-page)>*:not(.pwa-install-banner) {
+        display: none !important;
+    }
+}
+
+/* Optimize for 14" to 22" Screens */
+@media (min-width: 1300px) and (max-width: 1920px) {
+    :root {
+        --base-font-size: 16px;
+    }
+
+    body {
+        font-size: var(--base-font-size);
+    }
+
+    .glass-card {
+        padding: 2rem;
+    }
+}
+
+@media (min-width: 1921px) {
+    :root {
+        --base-font-size: 18px;
+        /* Slightly larger for 22"+ */
+    }
+
+    .main-content {
+        padding: 3rem;
+    }
+}
+
 :root {
     --gold: #E50914;
     /* Renamed concept to Red, keeping var name for compatibility or refactoring all */

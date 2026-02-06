@@ -1,4 +1,4 @@
-const CACHE_NAME = 'winners-fit-camp-v18';
+const CACHE_NAME = 'winners-fit-camp-v19';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

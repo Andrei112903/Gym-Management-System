@@ -307,7 +307,7 @@ const HRController = {
             phone: document.getElementById('staff-phone').value.trim(),
             address: document.getElementById('staff-address').value.trim(),
             username: username,
-            password: initialPassword, // Using initialPassword for the 'password' field
+            pin: initialPassword, // Saved as 'pin' for attendance module compatibility
             role: 'staff',
             status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()

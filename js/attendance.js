@@ -94,7 +94,7 @@ const AttendanceClient = {
         const fingerprint = this.getFingerprint();
 
         if (!deviceId) {
-            this.showError('Link Expired', 'Session cleared. Please use "Repair Device Link" with your PIN to reconnect.');
+            this.showError('Link Expired', 'Session cleared or device unrecognized. Please use "Repair Device Link" with your account password to reconnect.');
             return;
         }
 
@@ -422,12 +422,12 @@ const AttendanceClient = {
             }
 
             const data = snap.data();
-            if (data.deviceId || data.profileSetupAt) {
-                this.showError('Already Linked', 'This account is already paired with a phone.');
+            if (data.deviceId && data.deviceId !== existingId) {
+                this.showError('Account Already Paused', 'This account is already paired with another phone. Please ask Admin to "Reset Device" first.');
                 return;
             }
 
-            let deviceId = localStorage.getItem('wfc_device_id');
+            let deviceId = existingId;
             if (!deviceId) {
                 deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
                 localStorage.setItem('wfc_device_id', deviceId);

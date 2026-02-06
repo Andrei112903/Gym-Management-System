@@ -475,6 +475,11 @@ const MemberController = {
         const action = urlParams.get('action');
         const id = urlParams.get('id');
 
+        if (action === 'add') {
+            this.showAddForm();
+            window.history.replaceState({}, document.title, "members.html");
+        }
+
         if (action === 'renew' && id) {
             console.log("Auto-opening renewal for:", id);
             // Wait a tick for table render? Already awaited in init.

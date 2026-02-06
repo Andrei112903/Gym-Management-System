@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Winners Fit Camp</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Specific Styles for Login Page centering */
@@ -151,17 +152,8 @@
 
             <form id="loginForm">
                 <div class="input-group">
-                    <label>Login As</label>
-                    <select id="roleSelect" class="styled-select" required>
-                        <option value="" disabled selected>Select Role</option>
-                        <option value="admin">Administrator</option>
-                        <option value="staff">Staff Member</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label>Username</label>
-                    <input type="text" id="username" class="styled-input" placeholder="Enter username" required
+                    <label>Username or Email</label>
+                    <input type="text" id="username" class="styled-input" placeholder="Enter username or email" required
                         autocomplete="username">
                 </div>
 
@@ -176,7 +168,52 @@
                 <div id="errorMsg" class="error-msg"></div>
             </form>
 
+            <!-- Admin Setup Link (Only visible if no admin exists) -->
+            <div id="setup-admin-container"
+                style="display:none; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <p style="color:var(--text-muted); font-size: 0.8rem;">System not configured?</p>
+                <a href="#" onclick="showAdminSignup()"
+                    style="color:var(--gold); font-size: 0.85rem; text-decoration: none; font-weight: 600;">CREATE ADMIN
+                    ACCOUNT</a>
+            </div>
+
             <p class="footer-text">&copy; 2026 Winners Fit Camp</p>
+        </div>
+
+        <!-- Hidden Signup Box -->
+        <div id="signup-box" class="glass-card login-box" style="display:none;">
+            <h2 class="login-title" style="font-size: 1.5rem;">Admin Setup</h2>
+            <p class="login-subtitle">Create the main administrator account</p>
+
+            <form id="signupForm">
+                <div class="input-group">
+                    <label>Admin Email (System Only)</label>
+                    <input type="email" id="reg-email" class="styled-input" placeholder="admin@example.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Preferred Username</label>
+                    <input type="text" id="reg-username" class="styled-input" placeholder="e.g. admin" required>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" id="reg-pass" class="styled-input" placeholder="Strong password"
+                            required>
+                    </div>
+                    <div class="input-group">
+                        <label>Confirm</label>
+                        <input type="password" id="reg-pass-confirm" class="styled-input" placeholder="Re-type"
+                            required>
+                    </div>
+                </div>
+
+                <button type="submit" class="cta-button login-btn">Finalize Setup</button>
+                <button type="button" onclick="showLogin()" class="cta-button login-btn"
+                    style="background:transparent; border:1px solid var(--glass-border); margin-top:0.5rem;">Back to
+                    Login</button>
+
+                <div id="regErrorMsg" class="error-msg"></div>
+            </form>
         </div>
     </div>
 
@@ -191,35 +228,72 @@
     <!-- Load Auth Logic -->
     <script src="js/auth.js"></script>
     <script>
-        // FORCE UNREGISTER SERVICE WORKER to fix "Offline" issues
+        // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (let registration of registrations) {
-                    console.log('Unregistering SW:', registration);
-                    registration.unregister();
-                }
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered:', reg.scope))
+                    .catch(err => console.log('SW Registration Failed:', err));
             });
         }
 
         // Init logic for login page specifically
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const form = document.getElementById('loginForm');
-            const roleSelect = document.getElementById('roleSelect');
+            const signupForm = document.getElementById('signupForm');
             const usernameInput = document.getElementById('username');
             const errorMsg = document.getElementById('errorMsg');
+            const regErrorMsg = document.getElementById('regErrorMsg');
 
-            // Auto-fill convenience for demo (Optional, helpful for user testing)
-            roleSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'admin') {
-                    usernameInput.value = 'admin';
-                } else if (e.target.value === 'staff') {
-                    usernameInput.value = 'staff';
+            // 1. Initial Setup Check
+            const setupRequired = await AuthService.checkInitialSetup();
+            if (setupRequired) {
+                document.getElementById('setup-admin-container').style.display = 'block';
+            }
+
+            window.showAdminSignup = () => {
+                document.querySelector('.login-box').style.display = 'none';
+                document.getElementById('signup-box').style.display = 'block';
+            };
+
+            window.showLogin = () => {
+                document.querySelector('.login-box').style.display = 'block';
+                document.getElementById('signup-box').style.display = 'none';
+            };
+
+            // Handle Signup
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('reg-email').value;
+                const username = document.getElementById('reg-username').value;
+                const pass = document.getElementById('reg-pass').value;
+                const confirmPass = document.getElementById('reg-pass-confirm').value;
+                const btn = signupForm.querySelector('button');
+
+                if (pass !== confirmPass) {
+                    regErrorMsg.textContent = "Passwords do not match!";
+                    regErrorMsg.style.opacity = '1';
+                    return;
+                }
+
+                btn.innerHTML = 'Creating Admin...';
+                btn.disabled = true;
+
+                try {
+                    await AuthService.createFirstAdmin(email, pass, username);
+                    alert("Admin Account Created! Use your username to log in.");
+                    document.getElementById('setup-admin-container').style.display = 'none';
+                    showLogin();
+                } catch (err) {
+                    regErrorMsg.textContent = err.message;
+                    regErrorMsg.style.opacity = '1';
+                    btn.innerHTML = 'Finalize Setup';
+                    btn.disabled = false;
                 }
             });
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const role = roleSelect.value;
                 const user = usernameInput.value;
                 const pass = document.getElementById('password').value;
                 const btn = form.querySelector('button');
@@ -232,21 +306,17 @@
 
                 try {
                     // Authenticate
-                    // Note: window.AuthService.login returns true on success, or returns false (or throws)
-                    const success = await window.AuthService.login(user, pass, role);
+                    const success = await window.AuthService.login(user, pass);
 
                     if (success) {
                         btn.innerHTML = 'Access Granted';
                         btn.style.background = 'var(--gold)';
                         btn.style.color = 'black';
-                        // Redirect happens in auth.js usually, but we can double ensure
                     } else {
-                        // If it returned false without throwing
                         throw new Error("Login returned false");
                     }
                 } catch (err) {
                     console.error(err);
-                    // Reset UI on Failure
                     form.classList.add('shake');
                     errorMsg.textContent = 'Login Failed: ' + (err.message || "Invalid credentials");
                     errorMsg.style.opacity = '1';

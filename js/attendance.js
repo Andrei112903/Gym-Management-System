@@ -1,13 +1,27 @@
 /**
- * Winners Fit Camp - Attendance Client
- * Handles the logic for the Staff Scan -> PIN -> Check-In flow.
+ * Winners Fit Camp - Attendance Client (V3 - Enhanced PWA & Fingerprinting)
+ * Handles automatic verification via deviceId and hardware fingerprinting.
+ * Provides a seamless PWA experience even if cache is cleared.
  */
 
 const AttendanceClient = {
-    pin: '',
     token: '',
     deviceId: '',
     staffId: '',
+
+    // --- Hardware Fingerprinting ---
+    // Generates a unique signature based on device specs that survives cache clears.
+    getFingerprint: function () {
+        const specs = [
+            navigator.userAgent,
+            screen.width + 'x' + screen.height,
+            new Date().getTimezoneOffset(),
+            navigator.hardwareConcurrency || 'unknown',
+            navigator.deviceMemory || 'unknown',
+            (screen.colorDepth || 'unknown')
+        ];
+        return btoa(specs.join('|')).substring(0, 32);
+    },
 
     init: async function () {
         const debug = (msg) => {
@@ -17,156 +31,487 @@ const AttendanceClient = {
         };
 
         try {
-            debug("Step 1: Reading URL...");
+            debug("Reading URL...");
             const urlParams = new URLSearchParams(window.location.search);
             this.token = urlParams.get('token');
             const action = urlParams.get('action');
 
-            // --- HANDLE REGISTRATION ---
+            // CLEANUP: Strip parameters from URL for a cleaner PWA experience if added to Home Screen
+            if (window.history.replaceState && (this.token || action)) {
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            }
+
+            // --- INSTANT REGISTRATION ---
             if (action === 'register') {
-                debug("Step 2: Starting Registration...");
-                await this.handleRegistration(urlParams);
+                await this.handleInstantRegistration(urlParams);
                 return;
             }
 
-            // --- NORMAL ATTENDANCE FLOW ---
+            // --- AUTO ATTENDANCE ---
             if (!this.token) {
-                this.showError('No Access Token Found', 'Please scan the QR code at the Kiosk.');
+                // If opened as a PWA (no token), show the Hub
+                await this.showPwaHub();
                 return;
             }
 
-            debug("Step 2: Checking Device ID...");
             this.deviceId = localStorage.getItem('wfc_device_id');
             if (!this.deviceId) {
-                this.showError('Unregistered Device', 'This phone is not linked to any staff account. Please ask your Admin to register it.');
+                // SECURITY FIX: Never auto-recover via fingerprint alone. 
+                // iPhones are identical; same-model phones would impersonate each other.
+
+                // If scanning QR with unrecognized device, record the token and show recovery
+                if (this.token) {
+                    this.pendingAttendanceToken = this.token; // Save for after PIN verify
+                    this.showRelinkModal();
+                    return;
+                }
+
+                this.showError('Unregistered Device', 'This phone is not recognized. If you cleared your browser cache, please use "Repair Device Link" below.');
                 return;
             }
 
-            debug("Step 3: Connecting to Database...");
+            // Validate Token and Expiry from QR scan
             const tokenSnap = await db.collection('system').doc('attendance_token').get();
-            const data = tokenSnap.data();
+            const tokenData = tokenSnap.data();
 
-            debug("Step 4: Validating Token...");
-            if (!data || data.token !== this.token || Date.now() > data.expires) {
-                this.showError('Expired Token', 'The QR code has expired. Please scan the newly generated code on the screen.');
+            if (!tokenData || tokenData.token !== this.token || Date.now() > tokenData.expires) {
+                this.showError('Expired Token', 'The QR code has expired. Please scan the new code on the screen.');
                 return;
             }
 
-            // If all good, show PIN pad
-            debug("Step 5: Success! Ready.");
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('pin-view').style.display = 'block';
+            // If token is valid, immediately attempt attendance
+            await this.submitInstantAttendance();
 
         } catch (err) {
-            console.error("Attendance Init Error:", err);
-            debug("Error: " + err.message);
-            this.showError('Connection Error', 'Check your internet or scan again.');
+            console.error("Attendance Error:", err);
+            this.showError('Connection Error', 'Please check your internet and try again.');
         }
     },
 
-    handleRegistration: async function (params) {
-        const staffId = params.get('staffId');
-        if (!staffId) {
-            this.showError('Registration Error', 'Invalid registration link.');
+    showPwaHub: async function () {
+        let deviceId = localStorage.getItem('wfc_device_id');
+        const fingerprint = this.getFingerprint();
+
+        if (!deviceId) {
+            this.showError('Link Expired', 'Session cleared. Please use "Repair Device Link" with your PIN to reconnect.');
             return;
         }
 
         try {
-            const snap = await db.collection('staff').doc(staffId).get();
-            if (!snap.exists) {
-                this.showError('User Not Found', 'This registration link is invalid.');
+            const snap = await db.collection('users').where('deviceId', '==', deviceId).get();
+            if (snap.empty) {
+                this.showError('Device Unrecognized', 'This device has been unlinked.');
                 return;
             }
 
-            const data = snap.data();
-            // SECURITY: If profileSetupAt OR deviceId exists, the link is EXPIRED
-            if (data.profileSetupAt || data.deviceId) {
-                this.showError('Link Expired', 'This account has already been set up. Contact Admin if you need to reset your device.');
-                return;
+            const staffDoc = snap.docs[0];
+            const staff = staffDoc.data();
+            this.staffId = staffDoc.id;
+            this.deviceId = deviceId;
+
+            // Re-sync fingerprint if it changed or was missing
+            if (staff.deviceFingerprint !== fingerprint) {
+                await db.collection('users').doc(this.staffId).update({ deviceFingerprint: fingerprint });
             }
 
-            // 2. Clear loading and show setup
+            // Check if finished for today (1 Clock In + 1 Clock Out)
+            const today = new Date().toLocaleDateString('en-US');
+            const logsSnap = await db.collection('attendance_logs')
+                .where('staffId', '==', this.staffId)
+                .where('date', '==', today)
+                .get();
+
+            const logs = logsSnap.docs.map(d => d.data());
+            const hasClockOut = logs.some(l => l.action === 'Clock Out');
+            const hasClockIn = logs.some(l => l.action === 'Clock In');
+
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('setup-view').style.display = 'block';
-            this.staffId = staffId;
+            document.getElementById('pwa-hub').style.display = 'block';
+            document.getElementById('hub-welcome').textContent = `Hello ${staff.firstName}!`;
 
-            document.getElementById('setup-username').value = data.username || '';
+            const statusEl = document.querySelector('#pwa-hub p');
+            const actionBtn = document.querySelector('#hub-actions .cta-button:first-child');
 
-            // Generate/Grab Device ID
+            if (hasClockOut) {
+                statusEl.innerHTML = `You have <strong style="color:var(--gold)">COMPLETED</strong> your shift for today. See you tomorrow!`;
+                actionBtn.textContent = 'DONE FOR TODAY';
+                actionBtn.style.opacity = '0.5';
+                actionBtn.onclick = null;
+            } else {
+                const isIn = staff.lastAction === 'Clock In';
+                statusEl.innerHTML = `You are currently <strong style="color:${isIn ? '#00ff88' : '#ff4444'}">${isIn ? 'CLOCKED IN' : 'CLOCKED OUT'}</strong>`;
+
+                // FORCE QR SCAN FOR CLOCK OUT (User request: default back to scanning qr)
+                actionBtn.textContent = 'SCAN KIOSK QR';
+                actionBtn.style.opacity = '1';
+                actionBtn.onclick = () => this.startScanner();
+            }
+
+            // Store staff info for Account View
+            this.staffData = staff;
+
+        } catch (e) {
+            this.showError('Offline', 'Cannot reach database. Check your connection.');
+        }
+    },
+
+    showAccount: async function () {
+        if (!this.staffData) return;
+
+        const views = ['loading', 'pwa-hub', 'error-view', 'success-view'];
+        views.forEach(v => document.getElementById(v).style.display = 'none');
+
+        document.getElementById('account-view').style.display = 'block';
+
+        // Fill Profile
+        const s = this.staffData;
+        document.getElementById('acc-name').textContent = `${s.firstName} ${s.lastName}`;
+        document.getElementById('acc-username').textContent = `@${s.username}`;
+        document.getElementById('acc-avatar').textContent = s.firstName[0].toUpperCase();
+        document.getElementById('acc-phone').textContent = s.phone || 'No phone';
+
+        const isIn = s.lastAction === 'Clock In';
+        const stEl = document.getElementById('acc-status');
+        stEl.textContent = isIn ? 'CLOCKED IN' : 'CLOCKED OUT';
+        stEl.style.color = isIn ? '#00ff88' : '#ff4444';
+
+        // Add Edit Profile Button if not already there
+        const profileHeader = document.querySelector('#account-view h2');
+        if (profileHeader && !document.getElementById('edit-profile-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'edit-profile-btn';
+            btn.innerHTML = '✎ Edit';
+            btn.style = 'margin-left:10px; font-size:0.7rem; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--gold); padding:2px 8px; border-radius:10px; cursor:pointer; vertical-align:middle;';
+            btn.onclick = () => this.showEditProfile();
+            profileHeader.appendChild(btn);
+        }
+
+        this.loadHistory();
+    },
+
+    showEditProfile: function () {
+        document.getElementById('edit-name').value = this.staffData.firstName + ' ' + this.staffData.lastName;
+        document.getElementById('edit-username').value = this.staffData.username;
+        document.getElementById('edit-profile-modal').style.display = 'flex';
+    },
+
+    saveProfile: async function () {
+        const fullName = document.getElementById('edit-name').value.trim();
+        const username = document.getElementById('edit-username').value.trim().toLowerCase();
+
+        if (!fullName || !username) return alert("Fields cannot be empty.");
+
+        const names = fullName.split(' ');
+        const firstName = names[0];
+        const lastName = names.slice(1).join(' ') || '';
+
+        const btn = document.querySelector('#edit-profile-modal .cta-button:last-child');
+        btn.textContent = "Saving...";
+        btn.disabled = true;
+
+        try {
+            // 1. Update Staff Record
+            await db.collection('users').doc(this.staffId).update({
+                firstName,
+                lastName,
+                username
+            });
+
+            // 2. Update User Record (for login)
+            // Note: We search by email or use the staffId if we assume they are synced (they are in our saveStaff logic)
+            await db.collection('users').doc(this.staffId).update({
+                name: fullName,
+                username: username
+            });
+
+            alert("Profile Updated!");
+            window.location.reload();
+        } catch (e) {
+            alert("Error: " + e.message);
+            btn.textContent = "Save Changes";
+            btn.disabled = false;
+        }
+    },
+
+    showHub: function () {
+        document.getElementById('account-view').style.display = 'none';
+        document.getElementById('pwa-hub').style.display = 'block';
+    },
+
+    loadHistory: async function () {
+        const historyContainer = document.getElementById('acc-history');
+        try {
+            // Fetch without orderBy to avoid index requirement
+            const snap = await db.collection('attendance_logs')
+                .where('staffId', '==', this.staffId)
+                .limit(30)
+                .get();
+
+            if (snap.empty) {
+                historyContainer.innerHTML = '<p style="padding:2rem; opacity:0.3; text-align:center;">No history found.</p>';
+                return;
+            }
+
+            // Sort in JS (Descending: newest first)
+            const logs = snap.docs.map(doc => doc.data())
+                .sort((a, b) => {
+                    const timeA = a.timestamp?.toMillis() || 0;
+                    const timeB = b.timestamp?.toMillis() || 0;
+                    return timeB - timeA;
+                });
+
+            historyContainer.innerHTML = logs.map(log => {
+                const isIn = log.action === 'Clock In';
+                return `
+                    <div class="log-item">
+                        <div>
+                            <div class="log-action ${isIn ? 'action-in' : 'action-out'}">${log.action.toUpperCase()}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${log.date}</div>
+                        </div>
+                        <div style="font-weight:700;">${log.time}</div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            console.error("History fail:", e);
+            historyContainer.innerHTML = '<p style="padding:1rem; color:red; font-size:0.8rem; text-align:center;">Could not load logs.</p>';
+        }
+    },
+
+    // --- In-App Scanner ---
+    html5QrScanner: null,
+
+    startScanner: function () {
+        document.getElementById('hub-actions').style.display = 'none';
+        document.getElementById('scanner-view').style.display = 'block';
+
+        this.html5QrScanner = new Html5Qrcode("reader");
+        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+            const url = new URL(decodedText);
+            const token = url.searchParams.get('token');
+            if (token) {
+                this.stopScanner();
+                this.token = token;
+                this.submitInstantAttendance();
+            }
+        };
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        this.html5QrScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+    },
+
+    stopScanner: function () {
+        if (this.html5QrScanner) {
+            this.html5QrScanner.stop().then(() => {
+                document.getElementById('scanner-view').style.display = 'none';
+                document.getElementById('hub-actions').style.display = 'block';
+            }).catch(e => {
+                document.getElementById('scanner-view').style.display = 'none';
+                document.getElementById('hub-actions').style.display = 'block';
+            });
+        }
+    },
+
+    // --- Repair Link Logic ---
+    showRelinkModal: function () {
+        document.getElementById('relink-modal').style.display = 'flex';
+        document.getElementById('error-view').style.display = 'none';
+    },
+
+    submitRelink: async function () {
+        const user = document.getElementById('relink-user').value.trim().toLowerCase();
+        const pin = document.getElementById('relink-pin').value.trim();
+
+        if (!user || pin.length < 4) {
+            alert("Please enter both Username and 4-digit PIN.");
+            return;
+        }
+
+        const btn = document.querySelector('#relink-modal .cta-button:last-child');
+        const originalText = btn.textContent;
+        btn.textContent = "Verifying...";
+        btn.disabled = true;
+
+        try {
+            const snap = await db.collection('users')
+                .where('username', '==', user)
+                .where('pin', '==', pin)
+                .get();
+
+            if (snap.empty) {
+                alert("Invalid Username or PIN combination.");
+                btn.textContent = originalText;
+                btn.disabled = false;
+                return;
+            }
+
+            const staffDoc = snap.docs[0];
+            const staffId = staffDoc.id;
+
+            // Generate New Device ID
             let deviceId = localStorage.getItem('wfc_device_id');
             if (!deviceId) {
                 deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
                 localStorage.setItem('wfc_device_id', deviceId);
             }
 
-        } catch (error) {
-            console.error("Registration failed:", error);
-            this.showError('Linking Failed', 'Connectivity error. Please scan again.');
-        }
-    },
-
-    saveProfile: async function () {
-        const newUsername = document.getElementById('setup-username').value.trim();
-        const newPin = document.getElementById('setup-pin').value.trim();
-        const deviceId = localStorage.getItem('wfc_device_id');
-
-        if (newUsername.length < 3) { alert("Username too short"); return; }
-        if (newPin.length !== 4) { alert("PIN must be 4 digits"); return; }
-        if (!deviceId) { alert("Device ID missing. Please restart registration."); return; }
-
-        try {
-            this.setStatus("Finalizing Security...", false);
-
-            await db.collection('staff').doc(this.staffId).update({
-                username: newUsername,
-                pin: newPin,
-                deviceId: deviceId, // SAVING THE DEVICE ID HERE
-                profileSetupAt: firebase.firestore.FieldValue.serverTimestamp()
+            // Update Database (Transfer trust to this phone)
+            await db.collection('users').doc(staffId).update({
+                deviceId: deviceId,
+                deviceFingerprint: this.getFingerprint(),
+                lastRelinkAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            this.showSuccess('Setup Complete!', 'Your phone is now authorized. You can now use the gym Kiosk to clock in.');
+            this.deviceId = deviceId; // Set in current session
 
-            setTimeout(() => { window.location.href = "attendance.html"; }, 3000);
+            // If they scanned the QR before entering PIN, log attendance immediately
+            if (this.pendingAttendanceToken) {
+                try {
+                    const tokenSnap = await db.collection('system').doc('attendance_token').get();
+                    const tokenData = tokenSnap.data();
 
-        } catch (err) {
-            console.error(err);
-            alert("Failed to save changes. Check internet.");
+                    if (tokenData && tokenData.token === this.pendingAttendanceToken && Date.now() <= tokenData.expires) {
+                        await this.submitInstantAttendance();
+                        return; // showSuccess will take over
+                    } else {
+                        this.showSuccess("Phone Linked! ✓", "Device repaired, but the QR code expired. Use the Hub to scan the new code.");
+                        return;
+                    }
+                } catch (attendanceErr) {
+                    console.warn("Auto-attendance skip:", attendanceErr);
+                    this.showSuccess("Phone Linked! ✓", "Device repaired! Note: Automatic clock-in failed (" + attendanceErr.message + "), but you can now use the Hub.");
+                    return;
+                }
+            } else {
+                this.showSuccess("Phone Linked! ✓", "Your phone has been successfully reconnected to your account.");
+                return;
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("Verification failed: " + e.message);
+        } finally {
+            if (btn) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
     },
 
-    press: function (num) {
-        if (this.pin.length < 4) {
-            this.pin += num;
-            this.updateDots();
-            if (this.pin.length === 4) this.submitAttendance();
+    handleInstantRegistration: async function (params) {
+        const staffId = params.get('staffId');
+        if (!staffId) {
+            this.showError('Invalid Link', 'This registration link is broken.');
+            return;
+        }
+
+        // SECURITY: Prevent registered phones from taking new identities
+        let existingId = localStorage.getItem('wfc_device_id');
+        if (existingId) {
+            this.showError('Device Already Linked', 'This phone is already paired with an account. If you want to change accounts, please contact Admin to reset this device.');
+            return;
+        }
+
+        try {
+            const snap = await db.collection('users').doc(staffId).get();
+            if (!snap.exists) {
+                this.showError('User Not Found', 'This staff record does not exist.');
+                return;
+            }
+
+            const data = snap.data();
+            if (data.deviceId || data.profileSetupAt) {
+                this.showError('Already Linked', 'This account is already paired with a phone.');
+                return;
+            }
+
+            let deviceId = localStorage.getItem('wfc_device_id');
+            if (!deviceId) {
+                deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
+                localStorage.setItem('wfc_device_id', deviceId);
+            }
+
+            await db.collection('users').doc(staffId).update({
+                deviceId: deviceId,
+                deviceFingerprint: this.getFingerprint(),
+                profileSetupAt: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'Active'
+            });
+
+            this.showSuccess('Device Linked! ✓', `Welcome ${data.firstName}. Your phone is now your key to the Gym Kiosk.`);
+
+        } catch (error) {
+            console.error("Registration failed:", error);
+            this.showError('Linking Error', 'Could not link device. Try again.');
         }
     },
 
-    clear: function () {
-        this.pin = '';
-        this.updateDots();
-        this.setStatus('');
+    submitInstantAttendance: async function () {
+        try {
+            const snap = await db.collection('users').where('deviceId', '==', this.deviceId).get();
+            if (snap.empty) throw new Error("Device Unrecognized. Please contact Admin.");
+
+            const staffDoc = snap.docs[0];
+            const staff = staffDoc.data();
+            const staffId = staffDoc.id;
+
+            let nextAction = staff.lastAction === 'Clock In' ? 'Clock Out' : 'Clock In';
+            const today = new Date().toLocaleDateString('en-US');
+
+            // Final safety check: Check logs directly for today
+            const logsSnap = await db.collection('attendance_logs')
+                .where('staffId', '==', staffId)
+                .where('date', '==', today)
+                .where('action', '==', nextAction)
+                .get();
+
+            if (!logsSnap.empty) {
+                throw new Error(`You already recorded a ${nextAction} for today.`);
+            }
+
+            await db.collection('attendance_logs').add({
+                staffId: staffId,
+                staffName: `${staff.firstName} ${staff.lastName}`,
+                action: nextAction,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                date: today,
+                type: 'staff',
+                deviceId: this.deviceId
+            });
+
+            await db.collection('users').doc(staffId).update({ lastAction: nextAction });
+
+            this.showSuccess(`Success! ✓`, `${nextAction} recorded for ${staff.firstName}.`);
+            if (navigator.vibrate) navigator.vibrate(200);
+
+        } catch (error) {
+            this.showError('Verification Failed', error.message);
+        }
     },
 
-    updateDots: function () {
-        const dots = document.querySelectorAll('.pin-dot');
-        dots.forEach((dot, index) => {
-            index < this.pin.length ? dot.classList.add('filled') : dot.classList.remove('filled');
-        });
-    },
+    toggleManualAttendance: async function () {
+        const actionBtn = document.querySelector('#hub-actions .cta-button:first-child');
+        const originalText = actionBtn.textContent;
+        actionBtn.textContent = "Processing...";
+        actionBtn.disabled = true;
 
-    setStatus: function (msg, isError = false) {
-        const el = document.getElementById('status-msg');
-        if (el) {
-            el.textContent = msg;
-            el.style.color = isError ? '#ff3333' : '#00ff88';
+        try {
+            await this.submitInstantAttendance();
+        } catch (e) {
+            alert("Attendance Toggle Failed.");
+        } finally {
+            actionBtn.textContent = originalText;
+            actionBtn.disabled = false;
         }
     },
 
     showError: function (title, msg) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('pin-view').style.display = 'none';
-        document.getElementById('setup-view').style.display = 'none';
+        document.getElementById('success-view').style.display = 'none';
+        document.getElementById('pwa-hub').style.display = 'none';
         document.getElementById('error-view').style.display = 'block';
         document.getElementById('error-title').textContent = title;
         document.getElementById('error-msg').textContent = msg;
@@ -174,61 +519,26 @@ const AttendanceClient = {
 
     showSuccess: function (title, msg) {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('pin-view').style.display = 'none';
-        document.getElementById('setup-view').style.display = 'none';
-        document.getElementById('error-view').style.display = 'block';
-        document.getElementById('error-title').textContent = title;
-        document.getElementById('error-title').style.color = '#00ff88';
-        document.getElementById('error-msg').textContent = msg;
+        document.getElementById('error-view').style.display = 'none';
+        document.getElementById('pwa-hub').style.display = 'none';
+        document.getElementById('account-view').style.display = 'none';
+        document.getElementById('success-view').style.display = 'block';
+        document.getElementById('success-title').textContent = title;
+        document.getElementById('success-msg').textContent = msg;
     },
 
-    submitAttendance: async function () {
-        this.setStatus("Verifying...", false);
-        const deviceId = localStorage.getItem('wfc_device_id');
+    resetStatus: async function () {
+        if (!this.staffId) return;
+        const confirmReset = confirm("Are you stuck? This will toggle your status between Clocked In/Out in the system. Continue?");
+        if (!confirmReset) return;
 
         try {
-            // Find staff with this Device ID and PIN in the STAFF collection
-            const staffSnap = await db.collection('staff')
-                .where('deviceId', '==', deviceId)
-                .where('pin', '==', this.pin)
-                .get();
-
-            if (staffSnap.empty) {
-                throw new Error("Invalid PIN or Device Unrecognized.");
-            }
-
-            const staffDoc = staffSnap.docs[0];
-            const staff = staffDoc.data();
-
-            // Log the attendance
-            await db.collection('attendance_logs').add({
-                staffId: staffDoc.id,
-                staffName: `${staff.firstName} ${staff.lastName}`,
-                action: 'Clock In',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                date: new Date().toLocaleDateString('en-US'),
-                deviceId: deviceId // Log the device used for the clock-in as well
-            });
-
-            this.setStatus("Success! Clocked In.", false);
-            if (navigator.vibrate) navigator.vibrate(200);
-
-            setTimeout(() => {
-                window.location.href = "attendance.html?status=success";
-            }, 1000);
-
-        } catch (error) {
-            console.error(error);
-            this.setStatus("Verification Failed.", true);
-            const dots = document.querySelector('.pin-display');
-            if (dots) {
-                dots.classList.add('shake');
-                setTimeout(() => {
-                    dots.classList.remove('shake');
-                    this.clear();
-                }, 1000);
-            }
+            const nextStatus = this.staffData.lastAction === 'Clock In' ? 'Clock Out' : 'Clock In';
+            await db.collection('users').doc(this.staffId).update({ lastAction: nextStatus });
+            alert("Status toggled! The page will now refresh.");
+            window.location.reload();
+        } catch (e) {
+            alert("Reset failed: " + e.message);
         }
     }
 };

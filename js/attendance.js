@@ -84,13 +84,22 @@ const AttendanceClient = {
         try {
             let email = input;
             if (!input.includes('@')) {
-                const snap = await db.collection('users').where('username', '==', input).limit(1).get();
-                if (snap.empty) throw new Error("Staff ID not found.");
+                let snap = await db.collection('users').where('username', '==', input).limit(1).get();
+
+                if (snap.empty && !isNaN(input)) {
+                    snap = await db.collection('users').where('username', '==', parseInt(input)).limit(1).get();
+                }
+
+                if (snap.empty) {
+                    snap = await db.collection('users').where('staffId', '==', input).limit(1).get();
+                }
+
+                if (snap.empty) throw new Error(`Staff ID "${input}" not matched.`);
                 email = snap.docs[0].data().email;
             }
-            await auth.signInWithEmailAndPassword(email, pass);
+            await auth.signInWithEmailAndPassword(email.trim(), pass);
         } catch (err) {
-            alert("Login Failed: " + err.message);
+            alert("Verification Error: " + err.message);
             btn.disabled = false;
             btn.textContent = "Sign In & Record";
         }

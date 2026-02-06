@@ -322,10 +322,10 @@ const AttendanceClient = {
 
     submitRelink: async function () {
         const input = document.getElementById('relink-user').value.trim();
-        const pass = document.getElementById('relink-pin').value.trim(); // No toLowerCase() here
+        const pass = document.getElementById('relink-pin').value.trim();
 
         if (!input || !pass) {
-            alert("Please enter both Username/Email and Password.");
+            alert("Please enter both Email/Username and Password.");
             return;
         }
 
@@ -337,26 +337,30 @@ const AttendanceClient = {
         try {
             let email = input;
 
-            // 1. Resolve Username to Email if needed (Might fail if not logged in)
+            // 1. Resolve Username to Email only if it doesn't look like an email
             if (!input.includes('@')) {
                 try {
-                    const snap = await db.collection('users').where('username', '==', input).limit(1).get();
-                    if (!snap.empty) email = snap.docs[0].data().email;
-                } catch (e) { console.warn("Username lookup restricted. Using input as-is."); }
+                    const snap = await db.collection('users').where('username', '==', input.toLowerCase()).limit(1).get();
+                    if (!snap.empty) {
+                        email = snap.docs[0].data().email;
+                    }
+                } catch (e) {
+                    console.warn("Username lookup restricted. Trying direct login.");
+                }
             }
 
-            // 2. AUTHENTICATE (Proves identity + grants Firestore permissions)
+            // 2. AUTHENTICATE with Firebase (This proves identity and unlocks permissions)
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             const uid = userCredential.user.uid;
 
             // 3. Generate New Device ID
             let deviceId = localStorage.getItem('wfc_device_id');
             if (!deviceId) {
-                deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
+                deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 11) + Date.now();
                 localStorage.setItem('wfc_device_id', deviceId);
             }
 
-            // 4. Update Database (Success means they are linked)
+            // 4. Update Database (Now authorized because we are signed in)
             await db.collection('users').doc(uid).update({
                 deviceId: deviceId,
                 deviceFingerprint: this.getFingerprint(),
@@ -364,19 +368,20 @@ const AttendanceClient = {
                 status: 'active'
             });
 
-            this.deviceId = deviceId; // Set in current session
+            this.deviceId = deviceId;
             this.staffId = uid;
 
-            // If scanned QR before entering PIN, log attendance immediately
-            if (this.pendingAttendanceToken) {
-                await this.submitInstantAttendance();
-            } else {
-                this.showSuccess("Phone Linked! ✓", "Your phone has been successfully connected to your account.");
-            }
+            this.showSuccess("Phone Linked! ✓", "Your phone is now successfully connected to your staff profile.");
 
         } catch (e) {
             console.error(e);
-            alert("Verification failed: " + e.message);
+            let errMsg = e.message;
+            if (e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password') {
+                errMsg = "Invalid password. Please check your credentials and try again.";
+            } else if (e.code === 'auth/user-not-found') {
+                errMsg = "Account not found. Please check the email spelling.";
+            }
+            alert("Verification Failed: " + errMsg);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
@@ -391,17 +396,22 @@ const AttendanceClient = {
             return;
         }
 
-        // Pre-fill the relink modal for them
+        // PRE-FILL the modal for the user
         if (email) {
             document.getElementById('relink-user').value = email;
         }
 
-        // Show the modal but change title to "Link Device"
+        // Show the modal and update UI for Registration
         this.showRelinkModal();
+
         const titleEl = document.querySelector('#relink-modal h2');
         if (titleEl) titleEl.textContent = "Complete Registration";
+
         const descEl = document.querySelector('#relink-modal p');
-        if (descEl) descEl.textContent = "Please enter your account password to pair this phone with your staff profile.";
+        if (descEl) descEl.textContent = "Verify your account password to securely link this phone to your profile.";
+
+        const btnLink = document.querySelector('#relink-modal .cta-button:last-child');
+        if (btnLink) btnLink.textContent = "Verify & Link";
     },
 
     submitInstantAttendance: async function () {

@@ -127,42 +127,7 @@ const HRController = {
                                     </tr>
                                 `;
         }).join('')}
-                                ${this.state.staff.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No staff members found.</td></tr>' : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- Attendance Logs Table -->
-                <div class="glass-card">
-                    <h3>Recent Attendance Logs</h3>
-                    <div class="table-container" style="margin-top:1rem;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Staff Member</th>
-                                    <th>Action</th>
-                                    <th>Time</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${this.state.attendanceLogs.map(log => {
-            const actionClass = log.action === 'Clock In' ? 'status-active' : 'status-expired';
-            return `
-                                    <tr>
-                                        <td><strong>${log.staffName}</strong></td>
-                                        <td><span class="status-badge ${actionClass}">${log.action}</span></td>
-                                        <td><strong style="color:var(--gold);">${log.time}</strong></td>
-                                        <td style="color:var(--text-muted);">${log.date}</td>
-                                    </tr>
-                                `;
-        }).join('')}
-                                ${this.state.attendanceLogs.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">No logs found today.</td></tr>' : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+wwwwwwwwwwww                </div>
             </div>
         `;
     },

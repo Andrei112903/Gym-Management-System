@@ -257,17 +257,6 @@ const CheckInController = {
             } else {
                 this.showStatus('valid', 'Access Granted', `${member.name}<br>${member.package} valid until ${member.expiryDate}`);
 
-<<<<<<< HEAD
-                // Log Visit in DB
-                const checkInData = {
-                    memberId: member.id,
-                    memberName: member.name,
-                    status: 'valid',
-                    statusText: 'Access Granted'
-                };
-
-                Store.addCheckIn(checkInData);
-=======
                 // Log Visit in DB for Live Reports
                 await db.collection('attendance_logs').add({
                     memberId: member.id,
@@ -279,7 +268,13 @@ const CheckInController = {
                     date: today
                 });
 
->>>>>>> b860d108e24a360663dde49f38b3bde195cc1856
+                // Also update the local store
+                Store.addCheckIn({
+                    memberId: member.id,
+                    memberName: member.name,
+                    status: 'valid',
+                    statusText: 'Access Granted'
+                });
                 this.addToRecent(member.name, 'Success');
             }
 

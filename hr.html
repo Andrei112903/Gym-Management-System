@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HR & Staff - Winners Fit Camp</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E50914">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -269,13 +271,14 @@
                             <strong id="gen-username" style="color:var(--gold);">---</strong>
                         </div>
                         <div>
-                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">SECURITY PIN</span>
+                            <span style="display:block; font-size:0.7rem; color:var(--text-muted);">INITIAL
+                                PASSWORD</span>
                             <strong id="gen-pin" style="color:var(--gold);">---</strong>
                         </div>
                     </div>
                     <p
                         style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1.5rem; opacity:0.7; text-align:center;">
-                        Staff will use <strong>Username + PIN</strong> for device linking. Password is auto-generated.
+                        Staff will use <strong>Username + Initial Password</strong> for device linking.
                     </p>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -335,6 +338,7 @@
             HRController.init();
         });
     </script>
+    <script src="app.js"></script>
 </body>
 
 </html>

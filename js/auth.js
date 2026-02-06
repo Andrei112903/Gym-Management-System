@@ -63,7 +63,8 @@ const AuthService = {
             // Do NOT clear data caches - this causes data loss if sync pending
             // wfc_members_cache, etc. should persist for "Offline" support
 
-            window.location.href = 'login.html';
+            // SECURITY FIX: Use replace to prevent "Back Button" access
+            window.location.replace('login.html');
         });
     },
 
@@ -83,14 +84,14 @@ const AuthService = {
         const user = this.getCurrentUser();
 
         if (!user) {
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
             return;
         }
 
         // Role-based guarding
         if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
             alert("Access Denied: You do not have permission to view this page.");
-            window.location.href = 'dashboard.html';
+            window.location.replace('dashboard.html');
             return;
         }
 
@@ -98,7 +99,7 @@ const AuthService = {
         auth.onAuthStateChanged(firebaseUser => {
             if (!firebaseUser) {
                 localStorage.removeItem('currentUser');
-                window.location.href = 'login.html';
+                window.location.replace('login.html');
             }
         });
     },

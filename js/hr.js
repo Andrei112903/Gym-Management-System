@@ -88,7 +88,7 @@ const HRController = {
                                 <tr>
                                     <th>Name</th>
                                     <th>Username</th>
-                                    <th>PIN</th>
+                                    <th>Password</th>
                                     <th>Status</th>
                                     <th style="text-align:right;">Actions</th>
                                 </tr>
@@ -285,7 +285,10 @@ const HRController = {
 
     generateTrialPin: function () {
         const pin = Math.floor(1000 + Math.random() * 9000);
-        document.getElementById('gen-pin').textContent = pin;
+        const username = document.getElementById('gen-username').textContent;
+        // Initial password is username + random 4 digits
+        const initialPass = (username && username !== '---') ? username + pin : 'staff' + pin;
+        document.getElementById('gen-pin').textContent = initialPass;
     },
 
     saveStaff: async function (e) {
@@ -294,11 +297,8 @@ const HRController = {
         const originalText = btn.innerHTML;
 
         const email = document.getElementById('staff-email').value.trim();
-        const pin = document.getElementById('gen-pin').textContent;
+        const initialPassword = document.getElementById('gen-pin').textContent;
         const username = document.getElementById('gen-username').textContent;
-
-        // Auto-generate password from PIN
-        const password = 'Staff' + pin;
 
         const staffData = {
             firstName: document.getElementById('staff-firstname').value.trim(),
@@ -307,7 +307,7 @@ const HRController = {
             phone: document.getElementById('staff-phone').value.trim(),
             address: document.getElementById('staff-address').value.trim(),
             username: username,
-            pin: pin,
+            password: initialPassword, // Using initialPassword for the 'password' field
             role: 'staff',
             status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -327,7 +327,7 @@ const HRController = {
             const secondaryApp = firebase.initializeApp(firebase.app().options, 'Secondary');
             const secondaryAuth = secondaryApp.auth();
 
-            const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+            const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, initialPassword);
             const uid = userCredential.user.uid;
 
             // 2. Save Integrated Record (to 'users' collection ONLY)

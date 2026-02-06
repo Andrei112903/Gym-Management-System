@@ -8,6 +8,7 @@
     <link rel="icon" href="icon.png?v=2" type="image/png">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E50914">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Specific Styles for Login Page centering */
@@ -105,7 +106,6 @@
             background-size: .65em auto;
         }
 
-        /* Fix for Dropdown Options */
         option {
             background-color: var(--black);
             color: var(--text-main);
@@ -133,12 +133,12 @@
             transition: opacity 0.3s;
         }
 
-        /* Footer text */
         .footer-text {
             margin-top: 2rem;
             font-size: 0.8rem;
             color: var(--text-muted);
             opacity: 0.6;
+            text-align: center;
         }
     </style>
 </head>
@@ -169,7 +169,6 @@
                 <div id="errorMsg" class="error-msg"></div>
             </form>
 
-            <!-- Admin Setup Link (Only visible if no admin exists) -->
             <div id="setup-admin-container"
                 style="display:none; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
                 <p style="color:var(--text-muted); font-size: 0.8rem;">System not configured?</p>
@@ -181,7 +180,6 @@
             <p class="footer-text">&copy; 2026 Winners Fit Camp</p>
         </div>
 
-        <!-- Hidden Signup Box -->
         <div id="signup-box" class="glass-card login-box" style="display:none;">
             <h2 class="login-title" style="font-size: 1.5rem;">Admin Setup</h2>
             <p class="login-subtitle">Create the main administrator account</p>
@@ -228,25 +226,20 @@
 
     <!-- Load Auth Logic -->
     <script src="js/auth.js"></script>
+    <script src="app.js"></script>
     <script>
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW Registered:', reg.scope))
-                    .catch(err => console.log('SW Registration Failed:', err));
-            });
-        }
-
-        // Init logic for login page specifically
         document.addEventListener('DOMContentLoaded', async () => {
+            // Redirect if already logged in
+            if (window.AuthService && AuthService.getCurrentUser()) {
+                window.location.replace('dashboard.html');
+                return;
+            }
             const form = document.getElementById('loginForm');
             const signupForm = document.getElementById('signupForm');
             const usernameInput = document.getElementById('username');
             const errorMsg = document.getElementById('errorMsg');
             const regErrorMsg = document.getElementById('regErrorMsg');
 
-            // 1. Initial Setup Check
             const setupRequired = await AuthService.checkInitialSetup();
             if (setupRequired) {
                 document.getElementById('setup-admin-container').style.display = 'block';
@@ -262,7 +255,6 @@
                 document.getElementById('signup-box').style.display = 'none';
             };
 
-            // Handle Signup
             signupForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('reg-email').value;
@@ -300,28 +292,24 @@
                 const btn = form.querySelector('button');
                 const originalBtnText = btn.innerHTML;
 
-                // UI Loading State
                 btn.innerHTML = 'Authenticating...';
                 btn.disabled = true;
                 errorMsg.style.opacity = '0';
 
                 try {
-                    // Authenticate
                     const success = await window.AuthService.login(user, pass);
-
                     if (success) {
                         btn.innerHTML = 'Access Granted';
                         btn.style.background = 'var(--gold)';
                         btn.style.color = 'black';
                     } else {
-                        throw new Error("Login returned false");
+                        throw new Error("Login failed");
                     }
                 } catch (err) {
                     console.error(err);
                     form.classList.add('shake');
                     errorMsg.textContent = 'Login Failed: ' + (err.message || "Invalid credentials");
                     errorMsg.style.opacity = '1';
-
                     btn.innerHTML = originalBtnText;
                     btn.disabled = false;
                     setTimeout(() => form.classList.remove('shake'), 500);

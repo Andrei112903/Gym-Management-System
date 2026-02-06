@@ -127,7 +127,7 @@ const HRController = {
                                     </tr>
                                 `;
         }).join('')}
-wwwwwwwwwwww                </div>
+                    </div>
             </div>
         `;
     },

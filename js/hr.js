@@ -246,7 +246,11 @@ const HRController = {
         pathParts[pathParts.length - 1] = 'attendance.html';
         const baseUrl = window.location.origin + pathParts.join('/');
 
-        const registrationUrl = `${baseUrl}?action=register&staffId=${staffId}&token=${Math.random().toString(36).substring(2)}`;
+        // Fetch staff email for easier linking
+        const staff = this.state.staff.find(s => s.id === staffId);
+        const emailParam = staff ? `&email=${encodeURIComponent(staff.email)}` : '';
+
+        const registrationUrl = `${baseUrl}?action=register&staffId=${staffId}${emailParam}&token=${Math.random().toString(36).substring(2)}`;
 
         new QRCode(container, {
             text: registrationUrl,

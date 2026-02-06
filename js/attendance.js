@@ -321,11 +321,11 @@ const AttendanceClient = {
     },
 
     submitRelink: async function () {
-        const user = document.getElementById('relink-user').value.trim().toLowerCase();
-        const pin = document.getElementById('relink-pin').value.trim();
+        const input = document.getElementById('relink-user').value.trim();
+        const pass = document.getElementById('relink-pin').value.trim();
 
-        if (!user || pin.length < 4) {
-            alert("Please enter both Username and 4-digit PIN.");
+        if (!input || !pass) {
+            alert("Please enter both Username/Email and Password.");
             return;
         }
 
@@ -335,117 +335,73 @@ const AttendanceClient = {
         btn.disabled = true;
 
         try {
-            const snap = await db.collection('users')
-                .where('username', '==', user)
-                .where('pin', '==', pin)
-                .get();
+            let email = input;
 
-            if (snap.empty) {
-                alert("Invalid Username or PIN combination.");
-                btn.textContent = originalText;
-                btn.disabled = false;
-                return;
+            // 1. Resolve Username to Email if needed (Might fail if not logged in)
+            if (!input.includes('@')) {
+                try {
+                    const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+                    if (!snap.empty) email = snap.docs[0].data().email;
+                } catch (e) { console.warn("Username lookup restricted. Using input as-is."); }
             }
 
-            const staffDoc = snap.docs[0];
-            const staffId = staffDoc.id;
+            // 2. AUTHENTICATE (Proves identity + grants Firestore permissions)
+            const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+            const uid = userCredential.user.uid;
 
-            // Generate New Device ID
+            // 3. Generate New Device ID
             let deviceId = localStorage.getItem('wfc_device_id');
             if (!deviceId) {
                 deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
                 localStorage.setItem('wfc_device_id', deviceId);
             }
 
-            // Update Database (Transfer trust to this phone)
-            await db.collection('users').doc(staffId).update({
+            // 4. Update Database (Success means they are linked)
+            await db.collection('users').doc(uid).update({
                 deviceId: deviceId,
                 deviceFingerprint: this.getFingerprint(),
-                lastRelinkAt: firebase.firestore.FieldValue.serverTimestamp()
+                lastRelinkAt: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'active'
             });
 
             this.deviceId = deviceId; // Set in current session
+            this.staffId = uid;
 
-            // If they scanned the QR before entering PIN, log attendance immediately
+            // If scanned QR before entering PIN, log attendance immediately
             if (this.pendingAttendanceToken) {
-                try {
-                    const tokenSnap = await db.collection('system').doc('attendance_token').get();
-                    const tokenData = tokenSnap.data();
-
-                    if (tokenData && tokenData.token === this.pendingAttendanceToken && Date.now() <= tokenData.expires) {
-                        await this.submitInstantAttendance();
-                        return; // showSuccess will take over
-                    } else {
-                        this.showSuccess("Phone Linked! ✓", "Device repaired, but the QR code expired. Use the Hub to scan the new code.");
-                        return;
-                    }
-                } catch (attendanceErr) {
-                    console.warn("Auto-attendance skip:", attendanceErr);
-                    this.showSuccess("Phone Linked! ✓", "Device repaired! Note: Automatic clock-in failed (" + attendanceErr.message + "), but you can now use the Hub.");
-                    return;
-                }
+                await this.submitInstantAttendance();
             } else {
-                this.showSuccess("Phone Linked! ✓", "Your phone has been successfully reconnected to your account.");
-                return;
+                this.showSuccess("Phone Linked! ✓", "Your phone has been successfully connected to your account.");
             }
 
         } catch (e) {
             console.error(e);
             alert("Verification failed: " + e.message);
         } finally {
-            if (btn) {
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
+            btn.textContent = originalText;
+            btn.disabled = false;
         }
     },
 
     handleInstantRegistration: async function (params) {
         const staffId = params.get('staffId');
+        const email = params.get('email');
         if (!staffId) {
             this.showError('Invalid Link', 'This registration link is broken.');
             return;
         }
 
-        // SECURITY: Prevent registered phones from taking new identities
-        let existingId = localStorage.getItem('wfc_device_id');
-        if (existingId) {
-            this.showError('Device Already Linked', 'This phone is already paired with an account. If you want to change accounts, please contact Admin to reset this device.');
-            return;
+        // Pre-fill the relink modal for them
+        if (email) {
+            document.getElementById('relink-user').value = email;
         }
 
-        try {
-            const snap = await db.collection('users').doc(staffId).get();
-            if (!snap.exists) {
-                this.showError('User Not Found', 'This staff record does not exist.');
-                return;
-            }
-
-            const data = snap.data();
-            if (data.deviceId && data.deviceId !== existingId) {
-                this.showError('Account Already Paused', 'This account is already paired with another phone. Please ask Admin to "Reset Device" first.');
-                return;
-            }
-
-            let deviceId = existingId;
-            if (!deviceId) {
-                deviceId = 'wfc_dev_' + Math.random().toString(36).substring(2, 15) + Date.now();
-                localStorage.setItem('wfc_device_id', deviceId);
-            }
-
-            await db.collection('users').doc(staffId).update({
-                deviceId: deviceId,
-                deviceFingerprint: this.getFingerprint(),
-                profileSetupAt: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'Active'
-            });
-
-            this.showSuccess('Device Linked! ✓', `Welcome ${data.firstName}. Your phone is now your key to the Gym Kiosk.`);
-
-        } catch (error) {
-            console.error("Registration failed:", error);
-            this.showError('Linking Error', 'Could not link device. Try again.');
-        }
+        // Show the modal but change title to "Link Device"
+        this.showRelinkModal();
+        const titleEl = document.querySelector('#relink-modal h2');
+        if (titleEl) titleEl.textContent = "Complete Registration";
+        const descEl = document.querySelector('#relink-modal p');
+        if (descEl) descEl.textContent = "Please enter your account password to pair this phone with your staff profile.";
     },
 
     submitInstantAttendance: async function () {

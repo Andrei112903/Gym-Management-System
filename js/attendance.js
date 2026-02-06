@@ -187,6 +187,16 @@ const AttendanceClient = {
                 lastActionDate: today
             });
 
+            // "BURNING FUSE" SECURITY: 
+            // After a successful clock-in/out, set the token to expire in 15 seconds.
+            // This allows anyone currently scanning to finish, but kills the link for future sharing.
+            const shortFuse = Date.now() + 15000;
+            if (tokenData.expires > shortFuse) {
+                db.collection('system').doc('attendance_token').update({
+                    expires: shortFuse
+                });
+            }
+
             this.token = '';
             this.showSuccess(`${nextAction} Recorded!`, `Confirmed for ${this.staffData.firstName}. Redirecting to portal...`);
 

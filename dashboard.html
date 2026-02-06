@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Winners Fit Camp</title>
     <link rel="icon" href="icon.png?v=2" type="image/png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=mobile">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#E50914">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -199,6 +199,7 @@
                 left: -100%;
                 width: 80%;
                 z-index: 200;
+                transition: left 0.3s ease;
             }
 
             .sidebar.open {
@@ -206,7 +207,7 @@
             }
 
             .menu-toggle {
-                display: block;
+                display: block !important;
             }
         }
     </style>
@@ -300,6 +301,10 @@
     <!-- Main Content -->
     <main class="main-content">
         <header class="top-bar">
+            <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"
+                style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; display:none; margin-right:1rem;">
+                ☰
+            </button>
             <h1 class="page-title" id="pageTitle">Dashboard</h1>
             <div class="date-display" style="color:var(--text-muted);">
                 <span id="currentDate">Mon, Feb 3</span>
@@ -337,8 +342,9 @@
                         <div class="stat-icon">
                             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
                                 stroke-width="2">
-                                <line x1="12" y1="1" x2="12" y2="23"></line>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                <path d="M8 19V5h3.5a4.5 4.5 0 1 1 0 9H8"></path>
+                                <line x1="18" y1="8" x2="6" y2="8"></line>
+                                <line x1="18" y1="11" x2="6" y2="11"></line>
                             </svg>
                         </div>
                         <div class="stat-value">₱1,250</div>
@@ -754,7 +760,7 @@
 
         // Admin Profile logic now handled by ProfileModule (js/profile.js)
     </script>
-    <script src="app.js"></script>
+    <script src="app.js?v=mobile"></script>
 </body>
 
 </html>

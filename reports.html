@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Reports - Winners Fit Camp</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=mobile">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#E50914">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -29,6 +29,24 @@
             flex-direction: column;
             padding: 1.5rem;
             z-index: 100;
+            transition: left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -100%;
+                width: 80%;
+                z-index: 200;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .menu-toggle {
+                display: block !important;
+            }
         }
 
         .main-content {
@@ -221,7 +239,13 @@
     <main class="main-content">
         <header
             style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-            <h1 style="color:var(--text-main); font-size: 1.5rem;">Financial Analytics</h1>
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"
+                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; display:none;">
+                    ☰
+                </button>
+                <h1 style="color:var(--text-main); font-size: 1.5rem;">Financial Analytics</h1>
+            </div>
             <div style="display:flex; gap:15px; align-items:center;">
                 <select id="timeRange"
                     style="background:#000; color:white; border:1px solid var(--glass-border); padding:5px 10px; border-radius:8px; outline:none;">
@@ -330,7 +354,7 @@
             ReportsController.init();
         });
     </script>
-    <script src="app.js"></script>
+    <script src="app.js?v=mobile"></script>
 </body>
 
 </html>

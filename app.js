@@ -4,7 +4,9 @@
  */
 
 // 1. Desktop & Screen Optimization
+// 1. Desktop & Screen Optimization
 function applyScreenOptimizations() {
+    /* 
     const width = window.innerWidth;
     const isAttendance = document.body.classList.contains('attendance-page');
 
@@ -34,6 +36,8 @@ function applyScreenOptimizations() {
         const blocker = document.getElementById('mobile-blocker');
         if (blocker) blocker.remove();
     }
+    */
+    // Logic Disabled for Mobile Access
 }
 
 // 2. Service Worker Registration

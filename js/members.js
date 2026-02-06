@@ -169,6 +169,7 @@ const MemberController = {
             // Populate Modal View
             document.getElementById('modal-name').textContent = member.name;
             document.getElementById('modal-package').textContent = member.package;
+            document.getElementById('modal-price').textContent = member.price ? `₱${member.price}` : '₱0'; // Display Price
             document.getElementById('modal-expiry').textContent = member.expiryDate;
             document.getElementById('modal-phone').textContent = member.phone || 'N/A';
 
@@ -176,6 +177,7 @@ const MemberController = {
             document.getElementById('edit-name').value = member.name;
             document.getElementById('edit-expiry').value = member.expiryDate;
             document.getElementById('edit-phone').value = member.phone || '';
+            document.getElementById('edit-price').value = member.price || '0'; // Edit Price
 
             // Populate Edit Package Select
             const packSelect = document.getElementById('edit-package');
@@ -275,7 +277,8 @@ const MemberController = {
         const updates = {
             name: document.getElementById('edit-name').value,
             phone: document.getElementById('edit-phone').value,
-            expiryDate: document.getElementById('edit-expiry').value
+            expiryDate: document.getElementById('edit-expiry').value,
+            price: document.getElementById('edit-price').value // Save Price
         };
 
         // Package Special Logic
@@ -341,11 +344,37 @@ const MemberController = {
 
             select.innerHTML = '<option value="" disabled selected>Select a Package</option>' +
                 packages.map(p => `
-                <option value="${p.id}">${p.name} - ₱${p.price}</option>
+                <option value="${p.id}" data-price="${p.price}">${p.name}</option>
             `).join('');
         } catch (err) {
             console.error('Error loading packages:', err);
             select.innerHTML = '<option value="">Error loading packages</option>';
+        }
+    },
+
+    // --- Price Logic ---
+    onPackageChange: function () {
+        const select = document.getElementById('packageSelect');
+        const priceInput = document.getElementById('add-price');
+        if (select.selectedIndex > 0) { // 0 is disabled selected
+            const option = select.options[select.selectedIndex];
+            const price = option.getAttribute('data-price');
+            if (price) priceInput.value = price;
+        }
+    },
+
+    onEditPackageChange: function () {
+        const select = document.getElementById('edit-package');
+        const priceInput = document.getElementById('edit-price');
+        // We need to match options logic mainly, but since we cloned innerHTML it might not have data attributes if we didn't refresh?
+        // Actually populatePackages runs before viewMember usually or at least options are cloned.
+        // Wait, viewMember clones innerHTML from packageSelect. If packageSelect has data-attributes, edit-package will too.
+        if (select.selectedIndex >= 0) {
+            const option = select.options[select.selectedIndex];
+            const price = option.getAttribute('data-price');
+            // Only auto-fill if user explicitly changes? Or always?
+            // Since it's a change event, yes.
+            if (price) priceInput.value = price;
         }
     },
 
@@ -388,7 +417,8 @@ const MemberController = {
                 email: formData.get('email'),
                 package: selectedPackage.name,
                 expiryDate: expiry.toISOString().split('T')[0],
-                phone: formData.get('phone')
+                phone: formData.get('phone'),
+                price: formData.get('price') || selectedPackage.price // Save Price
             };
 
             // 3. Add to DB

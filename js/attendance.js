@@ -322,7 +322,7 @@ const AttendanceClient = {
 
     submitRelink: async function () {
         const input = document.getElementById('relink-user').value.trim();
-        const pass = document.getElementById('relink-pin').value.trim();
+        const pass = document.getElementById('relink-pin').value.trim(); // No toLowerCase() here
 
         if (!input || !pass) {
             alert("Please enter both Username/Email and Password.");

@@ -149,10 +149,10 @@ const HRController = {
                 console.error("Token sync fail:", e);
             }
             this.generateQR(newToken);
-            this.startTimer(20);
+            this.startTimer(60);
         };
         updateToken();
-        this.kioskTimer = setInterval(updateToken, 20000);
+        this.kioskTimer = setInterval(updateToken, 60000);
     },
 
     generateQR: function (token) {

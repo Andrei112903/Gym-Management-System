@@ -7,16 +7,27 @@ const AuthService = {
     /**
      * Attempt to log in with Email/Password
      */
-    login: async function (input, password) {
+    login: async function (rawInput, password) {
         try {
+            const input = rawInput.trim();
             let email = input;
 
-            // 1. Resolve Username to Email if needed
+            // 1. Resolve Staff ID to Email if needed
             if (!input.includes('@')) {
-                const userSnapshot = await db.collection('users').where('username', '==', input).limit(1).get();
-                if (userSnapshot.empty) {
-                    throw new Error("Username not found. Please use your full email or a valid username.");
+                let userSnapshot = await db.collection('users').where('username', '==', input).limit(1).get();
+
+                if (userSnapshot.empty && !isNaN(input)) {
+                    userSnapshot = await db.collection('users').where('username', '==', parseInt(input)).limit(1).get();
                 }
+
+                if (userSnapshot.empty) {
+                    userSnapshot = await db.collection('users').where('staffId', '==', input).limit(1).get();
+                }
+
+                if (userSnapshot.empty) {
+                    throw new Error(`Staff ID "${input}" not recognized. Please check your ID or contact Admin.`);
+                }
+
                 email = userSnapshot.docs[0].data().email;
             }
 
@@ -123,15 +134,16 @@ const AuthService = {
     createFirstAdmin: async function (email, password, username) {
         try {
             // 1. Create in Firebase Auth
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const userCredential = await auth.createUserWithEmailAndPassword(email.trim(), password);
             const user = userCredential.user;
 
             // 2. Create in Firestore
             await db.collection('users').doc(user.uid).set({
-                email: email,
-                username: username,
+                email: email.trim(),
+                username: username.trim(),
                 role: 'admin',
-                name: username,
+                name: username.trim(),
+                staffId: username.trim(), // Redundancy for robust lookup
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 

@@ -399,15 +399,24 @@
                     let email = input;
                     // Robust Staff ID Lookup
                     if (!input.includes('@')) {
-                        const snap = await db.collection('users').where('username', '==', input).limit(1).get();
-                        if (snap.empty) throw new Error("Staff ID not found. Please contact Admin.");
+                        let snap = await db.collection('users').where('username', '==', input).limit(1).get();
+
+                        if (snap.empty && !isNaN(input)) {
+                            snap = await db.collection('users').where('username', '==', parseInt(input)).limit(1).get();
+                        }
+
+                        if (snap.empty) {
+                            snap = await db.collection('users').where('staffId', '==', input).limit(1).get();
+                        }
+
+                        if (snap.empty) throw new Error(`Staff ID "${input}" not recognized.`);
                         email = snap.docs[0].data().email;
                     }
 
-                    await auth.signInWithEmailAndPassword(email, pass);
+                    await auth.signInWithEmailAndPassword(email.trim(), pass);
                     localStorage.setItem('wfc_remembered_username', input);
                 } catch (err) {
-                    alert("Login Error: " + err.message);
+                    alert("Login Failed: " + err.message);
                     btn.disabled = false;
                     btn.textContent = "Enter Portal";
                 }
@@ -437,9 +446,13 @@
                 let statusColor = '#ffb800';
 
                 if (hasActionToday) {
-                    const isIn = this.staffData.lastAction === 'Clock In';
-                    statusText = isIn ? 'CLOCKED IN' : 'CLOCKED OUT';
-                    statusColor = isIn ? '#00ff88' : '#ff4444';
+                    if (this.staffData.lastAction === 'Clock In') {
+                        statusText = 'CLOCKED IN';
+                        statusColor = '#00ff88';
+                    } else if (this.staffData.lastAction === 'Clock Out') {
+                        statusText = 'SHIFT COMPLETE';
+                        statusColor = '#94a3b8';
+                    }
                 }
 
                 statusEl.textContent = statusText;

@@ -139,7 +139,7 @@ const HRController = {
     startTokenRotation: async function () {
         const updateToken = async () => {
             const newToken = Math.random().toString(36).substring(2, 15);
-            const expiry = Date.now() + 25000;
+            const expiry = Date.now() + 300000; // 5 Minute Grace Period for Login
             try {
                 await db.collection('system').doc('attendance_token').set({
                     token: newToken,

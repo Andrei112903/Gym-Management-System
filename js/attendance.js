@@ -115,20 +115,30 @@ const AttendanceClient = {
         let statusText = 'NO ENTRY TODAY';
         let statusColor = '#ffb800';
         let nextAction = 'Clock In';
+        let allowAction = true;
+        let mainMsg = "Identity confirmed. Choose your next step:";
 
         if (hasActionToday) {
             if (this.staffData.lastAction === 'Clock In') {
                 statusText = 'CLOCKED IN';
                 statusColor = '#00ff88';
                 nextAction = 'Clock Out';
-            } else {
-                statusText = 'CLOCKED OUT';
-                statusColor = '#ff4444';
-                nextAction = 'Clock In';
+            } else if (this.staffData.lastAction === 'Clock Out') {
+                // STRICT MODE: One Shift Per Day
+                statusText = 'SHIFT COMPLETED';
+                statusColor = '#94a3b8'; // Slate grey
+                allowAction = false;
+                mainMsg = "You have already completed your shift for today.";
             }
         }
 
-        document.getElementById('decision-action-text').textContent = `Record ${nextAction}`;
+        document.getElementById('decision-action-text').textContent = allowAction ? `Record ${nextAction}` : 'No Actions Available';
+        document.querySelector('#decision-hub p').textContent = mainMsg;
+
+        const actionBtn = document.querySelector('#decision-hub .cta-button');
+        if (actionBtn) {
+            actionBtn.style.display = allowAction ? 'block' : 'none';
+        }
 
         const statusEl = document.getElementById('decision-current-status');
         if (statusEl) {

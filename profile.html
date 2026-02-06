@@ -446,9 +446,13 @@
                 let statusColor = '#ffb800';
 
                 if (hasActionToday) {
-                    const isIn = this.staffData.lastAction === 'Clock In';
-                    statusText = isIn ? 'CLOCKED IN' : 'CLOCKED OUT';
-                    statusColor = isIn ? '#00ff88' : '#ff4444';
+                    if (this.staffData.lastAction === 'Clock In') {
+                        statusText = 'CLOCKED IN';
+                        statusColor = '#00ff88';
+                    } else if (this.staffData.lastAction === 'Clock Out') {
+                        statusText = 'SHIFT COMPLETE';
+                        statusColor = '#94a3b8';
+                    }
                 }
 
                 statusEl.textContent = statusText;

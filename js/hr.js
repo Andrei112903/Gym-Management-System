@@ -196,8 +196,8 @@ const HRController = {
     },
 
     generateTrialPin: function () {
-        // Generate a 9-digit staff ID starting with 122
-        const randomDigits = Math.floor(100000 + Math.random() * 900000);
+        // Generate a 6-digit staff ID starting with 122 (e.g. 122456)
+        const randomDigits = Math.floor(100 + Math.random() * 900);
         const staffId = "122" + randomDigits;
 
         // Random 4-digit PIN for password

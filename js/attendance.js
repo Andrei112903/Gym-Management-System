@@ -78,7 +78,7 @@ const AttendanceClient = {
             // FULL LOGIN MODE
             userGroup.style.display = 'block';
             loginTitle.textContent = "Staff Sign In";
-            loginWelcome.textContent = "Enter your numeric ID (122...) and password.";
+            loginWelcome.textContent = "Enter your 6-digit ID (122...) and password.";
         }
     },
 

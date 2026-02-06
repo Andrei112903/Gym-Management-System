@@ -145,14 +145,14 @@
     <div id="login-view" class="auth-container" style="display:none;">
         <div class="status-card animate-in">
             <h2 id="login-title" style="color:var(--gold); margin-bottom:0.5rem;">Staff Sign In</h2>
-            <p id="login-welcome" style="font-size:0.85rem; margin-bottom:2rem;">Enter your numeric ID (122...) and
+            <p id="login-welcome" style="font-size:0.85rem; margin-bottom:2rem;">Enter your 6-digit ID (122...) and
                 password.</p>
 
             <form onsubmit="AttendanceClient.handleLogin(event)">
                 <div id="username-group" class="input-group">
                     <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Staff
-                        ID (122...)</label>
-                    <input type="text" id="login-user" class="styled-input" placeholder="e.g. 122456789">
+                        ID (e.g. 122456)</label>
+                    <input type="text" id="login-user" class="styled-input" placeholder="e.g. 122456">
                 </div>
                 <div class="input-group" style="margin-bottom:2rem;">
                     <label

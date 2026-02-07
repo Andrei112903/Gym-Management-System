@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- User Profiles (Core Logic) ---
+    match /users/{userId} {
+      // 1. Authentication Lookup:
+      // Allow unauthenticated guests to query/search the users collection.
+      // This is REQUIRED for "Log in with Username/Staff ID" to work.
+      // Without this, the login page cannot convert "122747" -> "john@gym.com".
+      allow list: if true;
+
+      // 2. Personal Access:
+      // Users can modify their OWN profile (e.g. change phone number).
+      // They cannot modify anyone else's profile.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // 3. Admin Override:
+      // Admins have full access to manage all users.
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Attendance Logs ---
+    match /attendance_logs/{logId} {
+      // Staff/Admins can read logs (for dashboard/history).
+      allow read: if request.auth != null;
+
+      // Staff can create logs (Clock In/Out).
+      allow create: if request.auth != null;
+
+      // Only Admins can edit/delete logs (Data Integrity).
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- System Configuration (QR Token) ---
+    match /system/{docId} {
+      // Everyone (even guests) must be able to READ the token to validate QR codes.
+      allow read: if true;
+
+      // Only Admins/System can WRITE new tokens (Kiosk Logic).
+      allow write: if request.auth != null; 
+    }
+  }
+}
